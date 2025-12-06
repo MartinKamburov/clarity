@@ -1,14 +1,14 @@
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet, Image, Button } from "react-native";
 import { Link } from "expo-router";
-import FloatingCloud from "../components/FloatingCloud";
 
 
 export default function HomePage() {
     return (
         <View style={styles.container}>
             <Image source={require('../../assets/ClarityIcon.png')} style={styles.image}/>
-            <FloatingCloud />
-            <Text>Hello world</Text>
+            <Link href="/screen1">
+              <Text>Click to get started!</Text>
+            </Link>
         </View>
     );
 }
