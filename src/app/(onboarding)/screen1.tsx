@@ -1,49 +1,167 @@
-import { View, Text, StyleSheet } from "react-native";
-import { Link } from "expo-router";
+import React from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  Pressable, 
+  Image, 
+  KeyboardAvoidingView, 
+  Platform 
+} from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from "expo-router";
 
-export default function FirstQuestion(){
-    return (
-        <View style={styles.container}>
-            <Text>
-                Welcome to the first question!
-            </Text>
+export default function FirstQuestion() {
+  const [users_name, onChangeText] = React.useState('');
 
-            <Link href="/screen2" style={styles.buttonStyling}>
-                <Text style={styles.text}>Click to go to the next page</Text>
-            </Link>
+  const handleNextPage = () => {
+    if (users_name.trim() === '') {
+      return; 
+    }
+
+    router.push({
+        pathname: "/screen2",
+        params: { name: users_name } 
+    });
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* KeyboardAvoidingView ensures the keyboard doesn't cover 
+         your beautiful form when typing 
+      */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.contentWrapper}
+      >
+        
+        {/* 1. The Clarity Icon */}
+        <Image 
+            // Adjust the ../.. depending on where this file is located relative to assets
+            source={require('../../../assets/ClarityIcon.png')} 
+            style={styles.logo}
+        />
+
+        {/* 2. Text Section */}
+        <View style={styles.textContainer}>
+          <Text style={styles.headerText}>
+              Welcome to Clarity
+          </Text>
+          <Text style={styles.subText}>
+              I would love to get to know you a bit better! What's your name?
+          </Text>
         </View>
-    );
-}
+        
+        {/* 3. The "Cloud" Input */}
+        <TextInput 
+          style={styles.cloudInput}
+          onChangeText={onChangeText}
+          value={users_name}
+          placeholder="Enter your name..."
+          placeholderTextColor="#A0C4FF" // Light blue placeholder
+        />
 
+        {/* 4. The Action Button */}
+        <Pressable 
+            onPress={handleNextPage} 
+            style={({ pressed }) => [
+                styles.buttonStyling,
+                pressed && styles.buttonPressed // Adds a click effect
+            ]}
+        >
+            <Text style={styles.buttonText}>Continue</Text>
+        </Pressable>
+
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: "#F0F8FF"
+    backgroundColor: "#F0F8FF", 
   },
+  contentWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    // 1. Changed from 'center' to 'flex-start' so it starts at the top
+    justifyContent: 'flex-start', 
+    paddingHorizontal: 30,
+    width: '100%',
+    
+    // 2. Add Padding Top: Controls how far down the content starts
+    // Increase this number to move it down, decrease to move it up
+    // paddingTop: 120, 
+  },
+
+  // -- Logo Style --
+  logo: {
+    width: 300,  
+    height: 200, 
+    resizeMode: 'contain',
+    marginBottom: 20, // Reduced slightly to keep things tight
+  },
+
+  // -- Typography --
+  textContainer: {
+    marginBottom: 30,
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#005A9C', 
+    marginBottom: 10,
+    letterSpacing: 0.5,
+  },
+  subText: {
+    fontSize: 16,
+    color: '#555555',
+    textAlign: 'center',
+    lineHeight: 24, 
+  },
+
+  // -- Cloud Input Box --
+  cloudInput: {
+    width: '100%',
+    height: 60,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30, 
+    paddingHorizontal: 25,
+    fontSize: 18,
+    color: '#333333',
+    marginBottom: 30,
+    shadowColor: '#A0C4FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 5, 
+  },
+
+  // -- Button Styles --
   buttonStyling: {
-    backgroundColor: '#005A9C', // Deep Royal Blue (Contrasts well with Sky Blue)
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 20, // Fully rounded ends
-    flexDirection: 'row',
+    width: '100%',
+    backgroundColor: '#005A9C', 
+    paddingVertical: 18,
+    borderRadius: 30, 
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    
-    // The "Hover" Shadow
     shadowColor: '#003366',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8, // Android shadow
+    elevation: 8,
   },
-  text: {
+  buttonPressed: {
+    backgroundColor: '#004080', 
+    transform: [{ scale: 0.98 }], 
+  },
+  buttonText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  }
+    fontWeight: '700',
+    letterSpacing: 1,
+  }, 
 });
