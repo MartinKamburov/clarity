@@ -1,7 +1,9 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
+
+const { width } = Dimensions.get('window');
 
 export default function SecondQuestion() {
   const { name } = useLocalSearchParams();
@@ -30,6 +32,13 @@ export default function SecondQuestion() {
 
   return (
       <SafeAreaView style={styles.container}>
+          {/* Main icon */}
+          <Image 
+            source={require('../../../assets/ClarityIcon.png')} 
+            style={styles.heroImage}
+            resizeMode="contain"
+          />
+
           {/* Header Section */}
           <View style={styles.headerContainer}>
              <Text style={styles.headerText}>
@@ -42,9 +51,12 @@ export default function SecondQuestion() {
 
           {/* Form Section */}
           <View style={styles.formContainer}>
-             <OptionButton label="Just exploring" />
-             <OptionButton label="Looking for a job" />
-             <OptionButton label="Building a project" />
+            <OptionButton label="Anxiety & Stress" />
+            <OptionButton label="Self-Love" />
+            <OptionButton label="Career Growth" />
+            <OptionButton label="Confidence" />
+            <OptionButton label="Relationships" />
+            <OptionButton label="Health & Body" />
           </View>
       </SafeAreaView>
   );
@@ -54,11 +66,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: "#F0F8FF" // AliceBlue
+    // REMOVED: justifyContent: 'center' (This was forcing it to the middle)
+    backgroundColor: "#87CEEB",
+    // paddingTop: 10, // Adds a tiny bit of breathing room at the top
+  },
+  heroImage: {
+    // REDUCED: Made the image smaller (0.4 instead of 0.6) to save space
+    width: width * 0.4, 
+    height: width * 0.4,
+    marginBottom: 20, // Adds space between image and text
   },
   headerContainer: {
-    marginBottom: 40,
+    marginBottom: 30, // Reduced from 40 to keep things tight
     alignItems: 'center',
     paddingHorizontal: 20,
   },
@@ -71,47 +90,39 @@ const styles = StyleSheet.create({
   },
   subText: {
     fontSize: 16,
-    color: '#555',
+    color: '#1A365D', // Darker blue for better readability
     textAlign: 'center',
   },
   formContainer: {
     width: '100%',
     paddingHorizontal: 30,
-    gap: 20, // Increased gap for a airier feel
+    gap: 15, // Reduced gap slightly so more buttons fit
   },
-  
-  // -- The Cloud Button Style --
   optionCard: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 20,
+    paddingVertical: 18, // Slightly more compact
     paddingHorizontal: 25,
     borderRadius: 25,
-    
-    // Layout for Text + Circle
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // Pushes text left, circle right
-
-    // Cloud Shadow
-    shadowColor: '#A0C4FF',
+    justifyContent: 'space-between',
+    shadowColor: '#003366', // Darker shadow for better contrast
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
   },
   optionText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#005A9C', // Using the blue text immediately
+    color: '#005A9C',
   },
-  
-  // -- The Empty Bullet Point Circle --
   circle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12, // Half of width/height makes it a perfect circle
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#005A9C', // Blue border
-    backgroundColor: 'transparent', // Empty inside
+    borderColor: '#005A9C',
+    backgroundColor: 'transparent',
   }
 });

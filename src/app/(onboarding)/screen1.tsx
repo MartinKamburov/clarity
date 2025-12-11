@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -7,13 +7,40 @@ import {
   Pressable, 
   Image, 
   KeyboardAvoidingView, 
-  Platform 
+  Platform, 
+  Dimensions
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from "expo-router";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withRepeat, 
+  withTiming, 
+  Easing 
+} from 'react-native-reanimated';
+
+const { width } = Dimensions.get('window');
 
 export default function FirstQuestion() {
   const [users_name, onChangeText] = React.useState('');
+  const translateY = useSharedValue(0);
+  
+  useEffect(() => {
+    translateY.value = withRepeat(
+      withTiming(0, { // Move UP by 15 pixels
+        duration: 3000, // Takes 2.5 seconds (slow and floaty)
+        easing: Easing.inOut(Easing.quad), // Smooth start/stop
+      }),
+      -1, // Infinite repeat
+      true // Reverse (go back down)
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
 
   const handleNextPage = () => {
     if (users_name.trim() === '') {
@@ -37,11 +64,18 @@ export default function FirstQuestion() {
       >
         
         {/* 1. The Clarity Icon */}
-        <Image 
-            // Adjust the ../.. depending on where this file is located relative to assets
+        <Animated.View 
+          style={[
+            animatedStyle, 
+            { alignItems: 'center', width: '100%' } // <--- THIS FIXES THE CENTERING
+          ]}
+        >
+          <Image 
             source={require('../../../assets/ClarityIcon.png')} 
-            style={styles.logo}
-        />
+            style={styles.heroImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
 
         {/* 2. Text Section */}
         <View style={styles.textContainer}>
@@ -49,7 +83,7 @@ export default function FirstQuestion() {
               Welcome to Clarity
           </Text>
           <Text style={styles.subText}>
-              I would love to get to know you a bit better! What's your name?
+              I would love to get to know you better! What's your name?
           </Text>
         </View>
         
@@ -81,7 +115,12 @@ export default function FirstQuestion() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F0F8FF", 
+    backgroundColor: "#87CEEB", 
+  },
+  heroImage: {
+    width: width * 0.6, // 80% of screen width
+    height: width * 0.6,
+    maxHeight: 350,
   },
   contentWrapper: {
     flex: 1,
@@ -117,7 +156,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   subText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#555555',
     textAlign: 'center',
     lineHeight: 24, 
