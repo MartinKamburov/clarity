@@ -6,24 +6,32 @@ import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 
-export default function TheFocus() {
-  const { name } = useLocalSearchParams();
+export default function TheMood() {
+  // Grab all the data collected so far
+  const { name, focus, struggle, tone } = useLocalSearchParams();
 
   const handleOptionSelect = (selectedLabel : string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    // LOGIC NOTE: If they picked "Bad" or "Terrible", you will 
+    // want to flag this in your database to prioritize "Compassionate" quotes today.
+    
     router.push({
-      pathname: "/screen4",
-      params: { name, focus: selectedLabel }
+      pathname: "/screen7",
+      params: { name, focus, struggle, tone, mood: selectedLabel }
     });
   };
 
-  const OptionButton = ({ label}: { label: string }) => (
+  // Reusing your standard button, no subtitle needed here since the emojis explain it
+  const OptionButton = ({ label, emoji }: { label: string, emoji: string }) => (
     <TouchableOpacity 
       style={styles.optionCard}
       onPress={() => handleOptionSelect(label)}
     >
-      <Text style={styles.optionText}>{label}</Text>
+      <View style={styles.textWrapper}>
+        <Text style={styles.emoji}>{emoji}</Text>
+        <Text style={styles.optionText}>{label}</Text>
+      </View>
       <View style={styles.circle} />
     </TouchableOpacity>
   );
@@ -46,21 +54,20 @@ export default function TheFocus() {
               {/* Header Section */}
               <View style={styles.headerContainer}>
                  <Text style={styles.headerText}>
-                     Great to meet you, {name}!
+                    How have you been feeling lately?
                  </Text>
                  <Text style={styles.subText}>
-                     What brings you here today?
+                    There is no wrong answer. We’ll meet you exactly where you are.
                  </Text>
               </View>
 
-              {/* Options */}
-              <OptionButton label="Anxiety & Stress" />
-              <OptionButton label="Self-Love" />
-              <OptionButton label="Career Growth" />
-              <OptionButton label="Confidence" />
-              <OptionButton label="Relationships" />
-              <OptionButton label="Health & Body" />
-              <OptionButton label="Exploring" />
+              {/* Mood Options */}
+              <OptionButton emoji="🤩" label="Great" />
+              <OptionButton emoji="🙂" label="Good" />
+              <OptionButton emoji="😐" label="Okay" />
+              <OptionButton emoji="😔" label="Bad" />
+              <OptionButton emoji="😣" label="Terrible" />
+
             </ScrollView>
           </View>
       </SafeAreaView>
@@ -105,6 +112,8 @@ const styles = StyleSheet.create({
     color: '#1A365D',
     textAlign: 'center',
   },
+  
+  // --- CARD STYLES ---
   optionCard: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 18,
@@ -119,9 +128,17 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
+  textWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12, // Space between emoji and text
+  },
+  emoji: {
+    fontSize: 24,
+  },
   optionText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#005A9C',
   },
   circle: {

@@ -1,128 +1,209 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, router } from "expo-router";
+import React, { useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  Pressable, 
+  Image, 
+  KeyboardAvoidingView, 
+  Platform, 
+  Dimensions
+} from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from "expo-router";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withRepeat, 
+  withTiming, 
+  Easing 
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 
-export default function SecondQuestion() {
-  const { name } = useLocalSearchParams();
+export default function GetUserName() {
+  const [users_name, onChangeText] = React.useState('');
+  const translateY = useSharedValue(0);
+  
+  useEffect(() => {
+    translateY.value = withRepeat(
+      withTiming(0, { // Move UP by 15 pixels
+        duration: 3000, // Takes 2.5 seconds (slow and floaty)
+        easing: Easing.inOut(Easing.quad), // Smooth start/stop
+      }),
+      -1, // Infinite repeat
+      true // Reverse (go back down)
+    );
+  }, []);
 
-  // This function handles the press: It grabs the label and moves to the next page immediately
-  const handleOptionSelect = (selectedLabel : string) => {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+
+  const handleNextPage = () => {
+    if (users_name.trim() === '') {
+      return; 
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     router.push({
-      pathname: "/screen3",
-      params: { name: name, choice: selectedLabel }
+        pathname: "/screen3",
+        params: { name: users_name.trim() } 
     });
   };
 
-  // Helper component for the "Cloud Option"
-  const OptionButton = ({ label}: { label: string }) => (
-    <TouchableOpacity 
-      style={styles.optionCard}
-      onPress={() => handleOptionSelect(label)}
-    >
-      {/* Text on the Left */}
-      <Text style={styles.optionText}>{label}</Text>
-
-      {/* Empty Circle on the Right */}
-      <View style={styles.circle} />
-    </TouchableOpacity>
-  );
-
   return (
-      <SafeAreaView style={styles.container}>
-          {/* Main icon */}
+    <SafeAreaView style={styles.container}>
+      {/* KeyboardAvoidingView ensures the keyboard doesn't cover 
+         your beautiful form when typing 
+      */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.contentWrapper}
+      >
+        
+        {/* 1. The Clarity Icon */}
+        <Animated.View 
+          style={[
+            animatedStyle, 
+            { alignItems: 'center', width: '100%' } // <--- THIS FIXES THE CENTERING
+          ]}
+        >
           <Image 
             source={require('../../../assets/ClarityIcon.png')} 
             style={styles.heroImage}
             resizeMode="contain"
           />
+        </Animated.View>
 
-          {/* Header Section */}
-          <View style={styles.headerContainer}>
-             <Text style={styles.headerText}>
-                 Great to meet you, {name}!
-             </Text>
-             <Text style={styles.subText}>
-                 What brings you here today?
-             </Text>
-          </View>
+        {/* 2. Text Section */}
+        <View style={styles.textContainer}>
+          <Text style={styles.headerText}>
+              Welcome to Clarity
+          </Text>
+          <Text style={styles.subText}>
+              I would love to get to know you better! What's your name?
+          </Text>
+        </View>
+        
+        {/* 3. The "Cloud" Input */}
+        <TextInput 
+          style={styles.cloudInput}
+          onChangeText={onChangeText}
+          value={users_name}
+          placeholder="Enter your name..."
+          placeholderTextColor="#A0C4FF" // Light blue placeholder
+        />
 
-          {/* Form Section */}
-          <View style={styles.formContainer}>
-            <OptionButton label="Anxiety & Stress" />
-            <OptionButton label="Self-Love" />
-            <OptionButton label="Career Growth" />
-            <OptionButton label="Confidence" />
-            <OptionButton label="Relationships" />
-            <OptionButton label="Health & Body" />
-          </View>
-      </SafeAreaView>
+        {/* 4. The Action Button */}
+        <Pressable 
+            onPress={handleNextPage} 
+            style={({ pressed }) => [
+                styles.buttonStyling,
+                pressed && styles.buttonPressed // Adds a click effect
+            ]}
+        >
+            <Text style={styles.buttonText}>Continue</Text>
+        </Pressable>
+
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    // REMOVED: justifyContent: 'center' (This was forcing it to the middle)
-    backgroundColor: "#87CEEB",
-    // paddingTop: 10, // Adds a tiny bit of breathing room at the top
+    backgroundColor: "#87CEEB", 
   },
   heroImage: {
-    // REDUCED: Made the image smaller (0.4 instead of 0.6) to save space
-    width: width * 0.4, 
-    height: width * 0.4,
-    marginBottom: 20, // Adds space between image and text
+    width: width * 0.6, // 80% of screen width
+    height: width * 0.6,
+    maxHeight: 350,
   },
-  headerContainer: {
-    marginBottom: 30, // Reduced from 40 to keep things tight
+  contentWrapper: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 20,
+    // 1. Changed from 'center' to 'flex-start' so it starts at the top
+    justifyContent: 'flex-start', 
+    paddingHorizontal: 30,
+    width: '100%',
+    
+    // 2. Add Padding Top: Controls how far down the content starts
+    // Increase this number to move it down, decrease to move it up
+    // paddingTop: 120, 
+  },
+
+  // -- Logo Style --
+  logo: {
+    width: 300,  
+    height: 200, 
+    resizeMode: 'contain',
+    marginBottom: 20, // Reduced slightly to keep things tight
+  },
+
+  // -- Typography --
+  textContainer: {
+    marginBottom: 30,
+    alignItems: 'center',
   },
   headerText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#005A9C',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#005A9C', 
     marginBottom: 10,
-    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   subText: {
-    fontSize: 16,
-    color: '#1A365D', // Darker blue for better readability
+    fontSize: 18,
+    color: '#555555',
     textAlign: 'center',
+    lineHeight: 24, 
   },
-  formContainer: {
+
+  // -- Cloud Input Box --
+  cloudInput: {
     width: '100%',
-    paddingHorizontal: 30,
-    gap: 15, // Reduced gap slightly so more buttons fit
-  },
-  optionCard: {
+    height: 60,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 18, // Slightly more compact
+    borderRadius: 30, 
     paddingHorizontal: 25,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#003366', // Darker shadow for better contrast
+    fontSize: 18,
+    color: '#333333',
+    marginBottom: 30,
+    shadowColor: '#A0C4FF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 5, 
   },
-  optionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#005A9C',
+
+  // -- Button Styles --
+  buttonStyling: {
+    width: '100%',
+    backgroundColor: '#005A9C', 
+    paddingVertical: 18,
+    borderRadius: 30, 
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#003366',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  circle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#005A9C',
-    backgroundColor: 'transparent',
-  }
+  buttonPressed: {
+    backgroundColor: '#004080', 
+    transform: [{ scale: 0.98 }], 
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 1,
+  }, 
 });

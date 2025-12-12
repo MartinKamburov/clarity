@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Dimensions } from "react-native";
+import * as Haptics from 'expo-haptics';
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SkyBackground from '../components/SkyBackground'; // Adjust path as needed
@@ -18,6 +19,8 @@ export default function HomePage() {
   const translateY = useSharedValue(0);
 
   useEffect(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); //Used to vibrate the page
+
     translateY.value = withRepeat(
       withTiming(15, { // Move UP by 15 pixels
         duration: 2500, // Takes 2.5 seconds (slow and floaty)
@@ -31,6 +34,11 @@ export default function HomePage() {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
+
+  const handleGetStarted = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/screen1');
+  }
 
   const router = useRouter();
 
@@ -77,7 +85,7 @@ export default function HomePage() {
         <View style={styles.footerSection}>
           <AeroButton 
             title="Get Started"
-            onPress={() => router.push('/screen1')} // Update with your actual route
+            onPress={handleGetStarted}
             style={{ width: '100%' }}
           />
         </View>

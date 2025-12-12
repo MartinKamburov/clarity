@@ -6,24 +6,30 @@ import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 
-export default function TheFocus() {
-  const { name } = useLocalSearchParams();
+export default function TheTone() {
+  const { name, focus, struggle } = useLocalSearchParams();
 
   const handleOptionSelect = (selectedLabel : string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     router.push({
-      pathname: "/screen4",
-      params: { name, focus: selectedLabel }
+      pathname: "/screen6",
+      params: { name, focus, struggle, tone: selectedLabel }
     });
   };
 
-  const OptionButton = ({ label}: { label: string }) => (
+  // UPDATED: Now accepts a 'subtitle' prop
+  const OptionButton = ({ label, subtitle}: { label: string, subtitle?: string }) => (
     <TouchableOpacity 
       style={styles.optionCard}
       onPress={() => handleOptionSelect(label)}
     >
-      <Text style={styles.optionText}>{label}</Text>
+      {/* Wrapped text in a View to stack them */}
+      <View style={styles.textWrapper}>
+        <Text style={styles.optionText}>{label}</Text>
+        {subtitle && <Text style={styles.subtitleText}>{subtitle}</Text>}
+      </View>
+
       <View style={styles.circle} />
     </TouchableOpacity>
   );
@@ -46,21 +52,30 @@ export default function TheFocus() {
               {/* Header Section */}
               <View style={styles.headerContainer}>
                  <Text style={styles.headerText}>
-                     Great to meet you, {name}!
+                    How should we speak to you?
                  </Text>
                  <Text style={styles.subText}>
-                     What brings you here today?
+                    Choose the voice that motivates you best.
                  </Text>
               </View>
 
-              {/* Options */}
-              <OptionButton label="Anxiety & Stress" />
-              <OptionButton label="Self-Love" />
-              <OptionButton label="Career Growth" />
-              <OptionButton label="Confidence" />
-              <OptionButton label="Relationships" />
-              <OptionButton label="Health & Body" />
-              <OptionButton label="Exploring" />
+              {/* Options with Subtitles */}
+              <OptionButton 
+                label="Compassionate" 
+                subtitle='"It is okay to rest. You are enough."'
+              />
+              <OptionButton 
+                label="Empowering" 
+                subtitle='"You are a force. Crush this day."'
+              />
+              <OptionButton 
+                label="Stoic" 
+                subtitle='"Focus on what you control."'
+              />
+              <OptionButton 
+                label="Spiritual" 
+                subtitle='"The universe is aligning for you."'
+              />
             </ScrollView>
           </View>
       </SafeAreaView>
@@ -119,10 +134,23 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
+  // NEW: Wrapper to hold Title + Subtitle
+  textWrapper: {
+    flex: 1,
+    paddingRight: 10, // Prevent text from hitting the circle
+  },
   optionText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700', // Made slightly bolder
     color: '#005A9C',
+    marginBottom: 2, // Tiny space between title and subtitle
+  },
+  // NEW: Subtitle Style (Small & subtle)
+  subtitleText: {
+    fontSize: 12, 
+    color: '#666666',
+    fontWeight: '500',
+    fontStyle: 'italic',
   },
   circle: {
     width: 22,

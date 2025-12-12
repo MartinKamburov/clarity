@@ -3,13 +3,11 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  TextInput, 
   Pressable, 
   Image, 
-  KeyboardAvoidingView, 
-  Platform, 
   Dimensions
 } from "react-native";
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from "expo-router";
 import Animated, { 
@@ -22,18 +20,19 @@ import Animated, {
 
 const { width } = Dimensions.get('window');
 
-export default function FirstQuestion() {
-  const [users_name, onChangeText] = React.useState('');
+export default function ScienceFact() {
+
+  // --- 1. Animation Logic (Restored) ---
   const translateY = useSharedValue(0);
-  
+
   useEffect(() => {
     translateY.value = withRepeat(
-      withTiming(0, { // Move UP by 15 pixels
-        duration: 3000, // Takes 2.5 seconds (slow and floaty)
-        easing: Easing.inOut(Easing.quad), // Smooth start/stop
+      withTiming(15, { // Float up by 15px
+        duration: 2500,
+        easing: Easing.inOut(Easing.quad),
       }),
-      -1, // Infinite repeat
-      true // Reverse (go back down)
+      -1, // Infinite
+      true // Reverse
     );
   }, []);
 
@@ -41,33 +40,22 @@ export default function FirstQuestion() {
     transform: [{ translateY: translateY.value }],
   }));
 
-
+  // --- 2. Navigation ---
   const handleNextPage = () => {
-    if (users_name.trim() === '') {
-      return; 
-    }
-
-    router.push({
-        pathname: "/screen2",
-        params: { name: users_name } 
-    });
+    // Go to the name input screen
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/screen2"); 
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* KeyboardAvoidingView ensures the keyboard doesn't cover 
-         your beautiful form when typing 
-      */}
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.contentWrapper}
-      >
+      <View style={styles.contentWrapper}>
         
-        {/* 1. The Clarity Icon */}
+        {/* TOP: Floating Icon */}
         <Animated.View 
           style={[
             animatedStyle, 
-            { alignItems: 'center', width: '100%' } // <--- THIS FIXES THE CENTERING
+            { alignItems: 'center', width: '100%', marginTop: 20 } 
           ]}
         >
           <Image 
@@ -77,37 +65,33 @@ export default function FirstQuestion() {
           />
         </Animated.View>
 
-        {/* 2. Text Section */}
-        <View style={styles.textContainer}>
+        {/* MIDDLE: The "Knowledge Cloud" Card */}
+        <View style={styles.cardContainer}>
           <Text style={styles.headerText}>
-              Welcome to Clarity
+             Did you know? 🧠
           </Text>
-          <Text style={styles.subText}>
-              I would love to get to know you better! What's your name?
+          <Text style={styles.bodyText}>
+             Multiple studies show that practicing daily affirmations can <Text style={styles.highlight}>rewire your brain</Text>.
+          </Text>
+          <Text style={styles.bodyText}>
+             They are proven to reduce stress, increase resilience, and boost your overall well-being.
           </Text>
         </View>
-        
-        {/* 3. The "Cloud" Input */}
-        <TextInput 
-          style={styles.cloudInput}
-          onChangeText={onChangeText}
-          value={users_name}
-          placeholder="Enter your name..."
-          placeholderTextColor="#A0C4FF" // Light blue placeholder
-        />
 
-        {/* 4. The Action Button */}
-        <Pressable 
+        {/* BOTTOM: Action Button */}
+        <View style={styles.footerContainer}>
+            <Pressable 
             onPress={handleNextPage} 
             style={({ pressed }) => [
                 styles.buttonStyling,
-                pressed && styles.buttonPressed // Adds a click effect
+                pressed && styles.buttonPressed
             ]}
-        >
-            <Text style={styles.buttonText}>Continue</Text>
-        </Pressable>
+            >
+            <Text style={styles.buttonText}>Tell me more</Text>
+            </Pressable>
+        </View>
 
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -115,71 +99,58 @@ export default function FirstQuestion() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#87CEEB", 
-  },
-  heroImage: {
-    width: width * 0.6, // 80% of screen width
-    height: width * 0.6,
-    maxHeight: 350,
+    backgroundColor: "#87CEEB", // Clarity Sky Blue
   },
   contentWrapper: {
     flex: 1,
     alignItems: 'center',
-    // 1. Changed from 'center' to 'flex-start' so it starts at the top
-    justifyContent: 'flex-start', 
-    paddingHorizontal: 30,
+    justifyContent: 'space-between', // Spreads Icon, Card, and Button apart
+    paddingHorizontal: 24,
+    paddingBottom: 40, // Space for bottom button
+  },
+  heroImage: {
+    width: width * 0.5, // Slightly smaller than landing page for balance
+    height: width * 0.5,
+    maxHeight: 250,
+  },
+
+  // -- The Knowledge Card --
+  cardContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Almost solid white
+    borderRadius: 30,
+    padding: 30,
     width: '100%',
-    
-    // 2. Add Padding Top: Controls how far down the content starts
-    // Increase this number to move it down, decrease to move it up
-    // paddingTop: 120, 
-  },
-
-  // -- Logo Style --
-  logo: {
-    width: 300,  
-    height: 200, 
-    resizeMode: 'contain',
-    marginBottom: 20, // Reduced slightly to keep things tight
-  },
-
-  // -- Typography --
-  textContainer: {
-    marginBottom: 30,
     alignItems: 'center',
+    shadowColor: '#003366',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
   headerText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: '#005A9C', 
-    marginBottom: 10,
-    letterSpacing: 0.5,
-  },
-  subText: {
-    fontSize: 18,
-    color: '#555555',
+    marginBottom: 16,
     textAlign: 'center',
-    lineHeight: 24, 
   },
-
-  // -- Cloud Input Box --
-  cloudInput: {
-    width: '100%',
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 30, 
-    paddingHorizontal: 25,
-    fontSize: 18,
-    color: '#333333',
-    marginBottom: 30,
-    shadowColor: '#A0C4FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 5, 
+  bodyText: {
+    fontSize: 17,
+    color: '#4A5568', // Slate Gray for readability
+    textAlign: 'center',
+    lineHeight: 26, // Makes it easier to read
+    marginBottom: 12,
+  },
+  highlight: {
+    color: '#005A9C',
+    fontWeight: '700',
   },
 
   // -- Button Styles --
+  footerContainer: {
+    width: '100%',
+    marginBottom: 10,
+  },
   buttonStyling: {
     width: '100%',
     backgroundColor: '#005A9C', 
@@ -201,6 +172,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   }, 
 });

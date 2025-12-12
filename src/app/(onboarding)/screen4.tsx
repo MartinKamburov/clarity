@@ -6,15 +6,15 @@ import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 
-export default function TheFocus() {
-  const { name } = useLocalSearchParams();
+export default function TheStruggle() {
+  const { name, focus } = useLocalSearchParams();
 
   const handleOptionSelect = (selectedLabel : string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     router.push({
-      pathname: "/screen4",
-      params: { name, focus: selectedLabel }
+      pathname: "/screen5",
+      params: { name, focus, struggle: selectedLabel }
     });
   };
 
@@ -46,21 +46,21 @@ export default function TheFocus() {
               {/* Header Section */}
               <View style={styles.headerContainer}>
                  <Text style={styles.headerText}>
-                     Great to meet you, {name}!
+                    Thanks for sharing, {name}.
                  </Text>
                  <Text style={styles.subText}>
-                     What brings you here today?
+                    And what’s currently holding you back?
                  </Text>
               </View>
 
               {/* Options */}
-              <OptionButton label="Anxiety & Stress" />
-              <OptionButton label="Self-Love" />
-              <OptionButton label="Career Growth" />
-              <OptionButton label="Confidence" />
-              <OptionButton label="Relationships" />
-              <OptionButton label="Health & Body" />
-              <OptionButton label="Exploring" />
+              <OptionButton label="Overthinking" />
+              <OptionButton label="Procrastination" />
+              <OptionButton label="Imposter Syndrome" />
+              <OptionButton label="Fear of Failure" />
+              <OptionButton label="Negative Self-Talk" />
+              <OptionButton label="Loneliness" />
+              <OptionButton label="Past Trauma" />
             </ScrollView>
           </View>
       </SafeAreaView>
