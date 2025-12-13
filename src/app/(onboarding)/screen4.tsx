@@ -46,7 +46,7 @@ export default function TheStruggle() {
               {/* Header Section */}
               <View style={styles.headerContainer}>
                  <Text style={styles.headerText}>
-                    Thanks for sharing, {name}.
+                    Thanks for sharing.
                  </Text>
                  <Text style={styles.subText}>
                     And what’s currently holding you back?
