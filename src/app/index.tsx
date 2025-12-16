@@ -15,7 +15,7 @@ import Animated, {
 
 const { width } = Dimensions.get('window');
 
-export default function HomePage() {
+export default function FirstPage() {
   const translateY = useSharedValue(0);
 
   useEffect(() => {
