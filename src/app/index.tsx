@@ -37,7 +37,8 @@ export default function FirstPage() {
 
   const handleGetStarted = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/screen1');
+    // router.push('/screen1');
+    router.push('/home'); //use this for testing purposes right now change later
   }
 
   const router = useRouter();
