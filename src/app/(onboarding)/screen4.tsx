@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
@@ -9,24 +9,59 @@ const { width } = Dimensions.get('window');
 export default function TheStruggle() {
   const { name, focus } = useLocalSearchParams();
 
-  const handleOptionSelect = (selectedLabel : string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  // 1. STATE: Track an array of selected items
+  const [selectedStruggles, setSelectedStruggles] = useState<string[]>([]);
 
-    router.push({
-      pathname: "/screen5",
-      params: { name, focus, struggle: selectedLabel }
+  // 2. LOGIC: Toggle selection on click
+  const toggleOption = (label: string) => {
+    Haptics.selectionAsync(); // Light tap feeling
+
+    setSelectedStruggles(current => {
+      if (current.includes(label)) {
+        // If already selected, remove it
+        return current.filter(item => item !== label);
+      } else {
+        // If not selected, add it
+        return [...current, label];
+      }
     });
   };
 
-  const OptionButton = ({ label}: { label: string }) => (
-    <TouchableOpacity 
-      style={styles.optionCard}
-      onPress={() => handleOptionSelect(label)}
-    >
-      <Text style={styles.optionText}>{label}</Text>
-      <View style={styles.circle} />
-    </TouchableOpacity>
-  );
+  // 3. LOGIC: Move to next screen
+  const handleContinue = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    router.push({
+      pathname: "/screen5",
+      params: { 
+        name, 
+        focus, 
+        // Pass the array as a string so it travels safely to the next screen
+        struggle: JSON.stringify(selectedStruggles) 
+      }
+    });
+  };
+
+  const OptionButton = ({ label }: { label: string }) => {
+    const isSelected = selectedStruggles.includes(label);
+
+    return (
+      <TouchableOpacity 
+        style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+        onPress={() => toggleOption(label)}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+          {label}
+        </Text>
+        
+        {/* Visual Checkmark Logic */}
+        <View style={[styles.circle, isSelected && styles.circleSelected]}>
+           {isSelected && <View style={styles.innerDot} />}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
       <SafeAreaView style={styles.container}>
@@ -34,26 +69,19 @@ export default function TheStruggle() {
             <ScrollView 
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={true}
-                persistentScrollbar={true}
             >
-              {/* Main icon */}
               <Image 
                 source={require('../../../assets/ClarityIcon.png')} 
                 style={styles.heroImage}
                 resizeMode="contain"
               />
 
-              {/* Header Section */}
               <View style={styles.headerContainer}>
-                 <Text style={styles.headerText}>
-                    Thanks for sharing.
-                 </Text>
-                 <Text style={styles.subText}>
-                    And what’s currently holding you back?
-                 </Text>
+                 <Text style={styles.headerText}>Thanks for sharing.</Text>
+                 <Text style={styles.subText}>And what’s currently holding you back?</Text>
+                 <Text style={styles.subText}>(Select all that apply)</Text>
               </View>
 
-              {/* Options */}
               <OptionButton label="Overthinking" />
               <OptionButton label="Procrastination" />
               <OptionButton label="Imposter Syndrome" />
@@ -61,8 +89,26 @@ export default function TheStruggle() {
               <OptionButton label="Negative Self-Talk" />
               <OptionButton label="Loneliness" />
               <OptionButton label="Past Trauma" />
+
+              {/* Spacer to push button down if list is short */}
+              <View style={{ height: 20 }} />
+
             </ScrollView>
-          </View>
+
+            {/* 4. NEW: Floating Continue Button */}
+            <View style={styles.footerContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.continueButton, 
+                  selectedStruggles.length === 0 && styles.continueButtonDisabled
+                ]}
+                onPress={handleContinue}
+                disabled={selectedStruggles.length === 0}
+              >
+                <Text style={styles.continueText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+        </View>
       </SafeAreaView>
   );
 }
@@ -78,7 +124,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 30,
-    paddingBottom: 40,
+    paddingBottom: 100, // Extra padding for the footer button
     gap: 15,
   },
   
@@ -89,7 +135,6 @@ const styles = StyleSheet.create({
   },
   
   headerContainer: {
-    marginBottom: 30,
     alignItems: 'center',
     paddingHorizontal: 20,
   },
@@ -105,6 +150,8 @@ const styles = StyleSheet.create({
     color: '#1A365D',
     textAlign: 'center',
   },
+
+  // --- OPTION STYLES ---
   optionCard: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 18,
@@ -113,23 +160,76 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    // Shadow
     shadowColor: '#003366',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 4,
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: 'transparent', // Invisible border normally
+  },
+  optionCardSelected: {
+    backgroundColor: '#005A9C', // Blue background when selected
+    borderColor: '#004080',
   },
   optionText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#005A9C',
   },
+  optionTextSelected: {
+    color: '#FFFFFF', // White text when selected
+  },
+
+  // --- CHECKBOX STYLES ---
   circle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#005A9C',
     backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleSelected: {
+    borderColor: '#FFFFFF', // White border when selected
+    backgroundColor: '#FFFFFF',
+  },
+  innerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#005A9C', // Blue dot inside
+  },
+
+  // --- FOOTER BUTTON ---
+  footerContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 30,
+  },
+  continueButton: {
+    backgroundColor: '#005A9C',
+    paddingVertical: 18,
+    borderRadius: 30,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  continueButtonDisabled: {
+    backgroundColor: '#8FBAD8', // Lighter/Greyed out blue
+    shadowOpacity: 0,
+  },
+  continueText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   }
 });

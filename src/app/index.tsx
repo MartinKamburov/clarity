@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   heroImage: {
     width: width * 0.8, // 80% of screen width
     height: width * 0.8,
-    maxHeight: 350,
+    maxHeight: 400,
   },
 
   // --- TYPOGRAPHY ---

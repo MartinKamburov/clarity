@@ -43,7 +43,7 @@ export const CategoriesSheet = forwardRef<BottomSheet>((props, ref) => {
       snapPoints={snapPoints}
       enablePanDownToClose={true}
       backdropComponent={renderBackdrop}
-      backgroundStyle={{ backgroundColor: '#2D3748' }}
+      backgroundStyle={{ backgroundColor: '#0F172A' }}
       handleIndicatorStyle={{ backgroundColor: '#A0AEC0', width: 40 }}
     >
       <View style={styles.sheetHeader}>

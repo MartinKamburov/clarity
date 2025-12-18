@@ -37,7 +37,7 @@ export default function HomeScreen() {
   };
 
   const handleChangeTheme = () => {
-    themeSheetRef.current?.snapToIndex(0); 
+    themeSheetRef.current?.snapToIndex(1); 
   };
 
   // --- RENDERERS ---
