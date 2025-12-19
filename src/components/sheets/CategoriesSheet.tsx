@@ -71,6 +71,21 @@ export const CategoriesSheet = forwardRef<BottomSheet>((props, ref) => {
             </TouchableOpacity>
           ))}
         </View>
+
+        <Text>Popular</Text>  
+        <View style={styles.gridContainer}>
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity key={cat.id} style={styles.card} onPress={handlePress}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons name={cat.icon as any} size={40} color="#DCE6F5" style={{ opacity: 0.8 }} />
+              </View>
+              <View style={styles.cardFooter}>
+                <Text style={styles.cardLabel}>{cat.label}</Text>
+                {cat.locked && <Feather name="lock" size={16} color="#A0AEC0" />}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </BottomSheetScrollView>
     </BottomSheet>
   );

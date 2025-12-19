@@ -6,6 +6,7 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import { useQuotes } from '../../hooks/useQuotes';
 import { supabase } from '../../lib/supabase';
 import { createUserProfile } from '../../services/profileService';
+import { User } from '@supabase/supabase-js';
 
 // --- CUSTOM COMPONENTS ---
 import { CircleButton } from '../../components/CircleButton';
@@ -13,6 +14,7 @@ import { PracticeButton } from '../../components/PracticeButton';
 import { CategoriesSheet } from '../../components/sheets/CategoriesSheet';
 import { ProfileSheet } from '../../components/sheets/ProfileSheet';
 import { ThemeSheet } from '../../components/sheets/ThemeSheet';
+import LoadingScreen from '../../components/LoadingScreen';
 
 // --- DUMMY DATA ---
 // const QUOTES = [
@@ -23,7 +25,8 @@ import { ThemeSheet } from '../../components/sheets/ThemeSheet';
 
 export default function HomeScreen() {
   // Get Current User ID (You'll likely store this in a Context later)
-  const [userId, setUserId] = useState<string | undefined>(undefined);
+  const [user, setUser] = useState<User | null>(null);
+  // const [userId, setUserId] = useState<string | undefined>(undefined);
   // State for layout
   const [containerSize, setContainerSize] = useState<{ width: number, height: number } | null>(null);
   
@@ -32,14 +35,17 @@ export default function HomeScreen() {
   const profileSheetRef = useRef<BottomSheet>(null);
   const themeSheetRef = useRef<BottomSheet>(null);
 
-
+  
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUser(user);
+        // console.log("Home screen loaded for:", user.id);
+      }
     });
-    console.log("You have signed in here is your id: ", userId);
   }, []);
-  const { quotes, loading } = useQuotes(userId);
+  // console.log("Here is the user: ", user);
+  const { quotes, loading } = useQuotes(user?.id);
 
   // --- ACTIONS ---
   const handleOpenCategories = () => {
@@ -54,62 +60,13 @@ export default function HomeScreen() {
     themeSheetRef.current?.snapToIndex(1); 
   };
 
+  if (!user) return <LoadingScreen/>;
+  if (loading) return <LoadingScreen/>;
+
   // --- RENDERERS ---
   const onLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     setContainerSize({ width, height });
-  };
-
-  // Add this helper function somewhere or put it inside the component
-  const handleTestSignup = async () => {
-    console.log("🚀 Starting Test Signup...");
-
-    // 1. ANONYMOUS LOGIN
-    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-    if (authError) {
-      console.error("Login Failed:", authError.message);
-      return;
-    }
-    console.log("✅ User Logged In:", authData.user?.id);
-
-    // 2. FETCH A REAL THEME ID (Crucial Step)
-    // We query your existing 'themes' table to find a valid ID
-    const { data: themeData, error: themeError } = await supabase
-      .from('themes')
-      .select('id')
-      .limit(1) // Just grab the first one found
-      .single();
-
-    if (themeError || !themeData) {
-      console.error("❌ No themes found in database. Run the SQL INSERT first!");
-      return;
-    }
-    console.log("🎨 Found Valid Theme ID:", themeData.id);
-
-    // 3. CREATE PROFILE (With the real Theme ID)
-    const result = await createUserProfile({
-      name: "Guest User", 
-      focus: ["Anxiety & Stress", "Confidence"], 
-      struggle: ["Imposter Syndrome"],
-      tone: "Stoic", 
-      manifestation: "Yes",
-      
-      // Notification Data
-      notification_freq: 10,
-      notification_start: new Date().toISOString(),
-      notification_end: new Date().toISOString(),
-
-      // The Valid Theme ID we just found
-      theme: themeData.id, 
-    });
-
-    if (result.success) {
-      console.log("✅ Profile Created Successfully!");
-      alert("Success! You are logged in as a Guest.");
-    } else {
-      console.error("❌ Profile Creation Failed:", result.error);
-      alert("Failed. Check console.");
-    }
   };
 
   const renderQuoteItem = ({ item }: { item: typeof quotes[0] }) => {
@@ -147,10 +104,6 @@ export default function HomeScreen() {
             getItemLayout={(data, index) => ({ length: containerSize.height, offset: containerSize.height * index, index })}
           />
         )}
-      </View>
-
-      <View style={{ marginTop: 50 }}>
-        <Button title="⚠️ CREATE TEST USER" onPress={handleTestSignup} color="red" />
       </View>
 
       {/* 2. FLOATING UI */}

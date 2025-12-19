@@ -5,6 +5,8 @@ import { useLocalSearchParams, router } from "expo-router";
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { supabase } from "../../lib/supabase";
+import { createUserProfile } from "../../services/profileService";
 
 const { width } = Dimensions.get('window');
 
@@ -49,7 +51,8 @@ const BENEFITS = [
 
 export default function ThePaywall() {
   const params = useLocalSearchParams();
-  const { name } = params;
+
+  console.log(params);
 
   // Default to Yearly as it's the one we want to push
   const [selectedPlan, setSelectedPlan] = useState('yearly');
@@ -59,14 +62,17 @@ export default function ThePaywall() {
     setSelectedPlan(id);
   };
 
-  const handleSubscribe = () => {
+  const handleSubscribe = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await handleTestSignup(); //wait for the function to finish and then move on
     console.log(`Processing subscription for: ${selectedPlan}`);
     router.replace("/(tabs)/home"); 
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await handleTestSignup();
+    console.log(`User entered with a limited subscription.`);
     router.replace("/(tabs)/home"); 
   };
 
@@ -74,6 +80,57 @@ export default function ThePaywall() {
   const getButtonText = () => {
     if (selectedPlan === 'yearly') return "Start 3-Day Free Trial";
     return "Continue";
+  };
+
+  const handleTestSignup = async () => {
+    console.log("🚀 Starting Test Signup...");
+
+    // 1. ANONYMOUS LOGIN
+    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+    if (authError) {
+      console.error("Login Failed:", authError.message);
+      return;
+    }
+    console.log("✅ User Logged In:", authData.user?.id);
+
+    // 2. FETCH A REAL THEME ID (Crucial Step)
+    // We query your existing 'themes' table to find a valid ID
+    const { data: themeData, error: themeError } = await supabase
+      .from('themes')
+      .select('id')
+      .limit(1) // Just grab the first one found
+      .single();
+
+    if (themeError || !themeData) {
+      console.error("❌ No themes found in database. Run the SQL INSERT first!");
+      return;
+    }
+    console.log("🎨 Found Valid Theme ID:", themeData.id);
+
+    // 3. CREATE PROFILE (With the real Theme ID)
+    const result = await createUserProfile({
+      name: "Guest User", 
+      focus: ["Anxiety & Stress", "Confidence"], 
+      struggle: ["Imposter Syndrome"],
+      tone: "Stoic", 
+      manifestation: "Yes",
+      
+      // Notification Data
+      notification_freq: 10,
+      notification_start: new Date().toISOString(),
+      notification_end: new Date().toISOString(),
+
+      // The Valid Theme ID we just found
+      theme: themeData.id, 
+    });
+
+    if (result.success) {
+      console.log("✅ Profile Created Successfully!");
+      alert("Success! You are logged in as a Guest.");
+    } else {
+      console.error("❌ Profile Creation Failed:", result.error);
+      alert("Failed. Check console.");
+    }
   };
 
   return (
@@ -91,7 +148,7 @@ export default function ThePaywall() {
                     resizeMode="contain"
                 />
                 <Text style={styles.headerTitle}>
-                    Unlock full access for {name}
+                    Unlock full access
                 </Text>
             </View>
 
