@@ -55,7 +55,7 @@ export default function ScienceFact() {
         <Animated.View 
           style={[
             animatedStyle, 
-            { alignItems: 'center', width: '100%', marginTop: 20 } 
+            { alignItems: 'center', width: '100%', marginTop: 40 } 
           ]}
         >
           <Image 
@@ -109,9 +109,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40, // Space for bottom button
   },
   heroImage: {
-    width: width * 0.5, // Slightly smaller than landing page for balance
-    height: width * 0.5,
-    maxHeight: 250,
+    width: width * 0.8, // Slightly smaller than landing page for balance
+    height: width * 0.8,
+    maxHeight: 300,
   },
 
   // -- The Knowledge Card --

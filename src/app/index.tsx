@@ -37,8 +37,8 @@ export default function FirstPage() {
 
   const handleGetStarted = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // router.push('/screen1');
-    router.push('/home'); //use this for testing purposes right now change later
+    router.push('/screen1');
+    // router.push('/home'); //use this for testing purposes right now change later
   }
 
   const router = useRouter();
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   heroImage: {
     width: width * 0.8, // 80% of screen width
     height: width * 0.8,
-    maxHeight: 400,
+    maxHeight: 350,
   },
 
   // --- TYPOGRAPHY ---

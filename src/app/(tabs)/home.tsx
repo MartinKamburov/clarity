@@ -1,8 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, LayoutChangeEvent } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, LayoutChangeEvent, Button } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
+import { useQuotes } from '../../hooks/useQuotes';
+import { supabase } from '../../lib/supabase';
+import { createUserProfile } from '../../services/profileService';
 
 // --- CUSTOM COMPONENTS ---
 import { CircleButton } from '../../components/CircleButton';
@@ -12,13 +15,15 @@ import { ProfileSheet } from '../../components/sheets/ProfileSheet';
 import { ThemeSheet } from '../../components/sheets/ThemeSheet';
 
 // --- DUMMY DATA ---
-const QUOTES = [
-  { id: '1', text: "I am enough.\nI did enough.\nI can let go." },
-  { id: '2', text: "Peace comes from within.\nDo not seek it without." },
-  { id: '3', text: "Seek peace even when\npeace doesn't seek you." },
-];
+// const QUOTES = [
+//   { id: '1', text: "I am enough.\nI did enough.\nI can let go." },
+//   { id: '2', text: "Peace comes from within.\nDo not seek it without." },
+//   { id: '3', text: "Seek peace even when\npeace doesn't seek you." },
+// ];
 
 export default function HomeScreen() {
+  // Get Current User ID (You'll likely store this in a Context later)
+  const [userId, setUserId] = useState<string | undefined>(undefined);
   // State for layout
   const [containerSize, setContainerSize] = useState<{ width: number, height: number } | null>(null);
   
@@ -26,6 +31,15 @@ export default function HomeScreen() {
   const categoriesSheetRef = useRef<BottomSheet>(null);
   const profileSheetRef = useRef<BottomSheet>(null);
   const themeSheetRef = useRef<BottomSheet>(null);
+
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id);
+    });
+    console.log("You have signed in here is your id: ", userId);
+  }, []);
+  const { quotes, loading } = useQuotes(userId);
 
   // --- ACTIONS ---
   const handleOpenCategories = () => {
@@ -46,11 +60,63 @@ export default function HomeScreen() {
     setContainerSize({ width, height });
   };
 
-  const renderQuoteItem = ({ item }: { item: typeof QUOTES[0] }) => {
+  // Add this helper function somewhere or put it inside the component
+  const handleTestSignup = async () => {
+    console.log("🚀 Starting Test Signup...");
+
+    // 1. ANONYMOUS LOGIN
+    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+    if (authError) {
+      console.error("Login Failed:", authError.message);
+      return;
+    }
+    console.log("✅ User Logged In:", authData.user?.id);
+
+    // 2. FETCH A REAL THEME ID (Crucial Step)
+    // We query your existing 'themes' table to find a valid ID
+    const { data: themeData, error: themeError } = await supabase
+      .from('themes')
+      .select('id')
+      .limit(1) // Just grab the first one found
+      .single();
+
+    if (themeError || !themeData) {
+      console.error("❌ No themes found in database. Run the SQL INSERT first!");
+      return;
+    }
+    console.log("🎨 Found Valid Theme ID:", themeData.id);
+
+    // 3. CREATE PROFILE (With the real Theme ID)
+    const result = await createUserProfile({
+      name: "Guest User", 
+      focus: ["Anxiety & Stress", "Confidence"], 
+      struggle: ["Imposter Syndrome"],
+      tone: "Stoic", 
+      manifestation: "Yes",
+      
+      // Notification Data
+      notification_freq: 10,
+      notification_start: new Date().toISOString(),
+      notification_end: new Date().toISOString(),
+
+      // The Valid Theme ID we just found
+      theme: themeData.id, 
+    });
+
+    if (result.success) {
+      console.log("✅ Profile Created Successfully!");
+      alert("Success! You are logged in as a Guest.");
+    } else {
+      console.error("❌ Profile Creation Failed:", result.error);
+      alert("Failed. Check console.");
+    }
+  };
+
+  const renderQuoteItem = ({ item }: { item: typeof quotes[0] }) => {
     if (!containerSize) return null;
     return (
       <View style={{ width: containerSize.width, height: containerSize.height, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 }}>
-        <Text style={styles.quoteText}>{item.text}</Text>
+        <Text style={styles.quoteText}>{item.content}</Text>
         <View style={styles.actionRow}>
            {/* Using the new reusable button here too! */}
            <CircleButton style={{ backgroundColor: 'transparent' }}>
@@ -71,7 +137,7 @@ export default function HomeScreen() {
       <View style={styles.listContainer} onLayout={onLayout}>
         {containerSize && (
           <FlatList
-            data={QUOTES}
+            data={quotes}
             renderItem={renderQuoteItem}
             keyExtractor={(item) => item.id}
             pagingEnabled
@@ -81,6 +147,10 @@ export default function HomeScreen() {
             getItemLayout={(data, index) => ({ length: containerSize.height, offset: containerSize.height * index, index })}
           />
         )}
+      </View>
+
+      <View style={{ marginTop: 50 }}>
+        <Button title="⚠️ CREATE TEST USER" onPress={handleTestSignup} color="red" />
       </View>
 
       {/* 2. FLOATING UI */}
@@ -119,8 +189,6 @@ export default function HomeScreen() {
       <CategoriesSheet ref={categoriesSheetRef} />
       <ProfileSheet ref={profileSheetRef} /> 
       <ThemeSheet ref={themeSheetRef} /> 
-      
-      {/* Example: <ProfileSheet ref={profileSheetRef} /> */}
 
     </View>
   );
