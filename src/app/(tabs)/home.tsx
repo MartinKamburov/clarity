@@ -128,7 +128,7 @@ export default function HomeScreen() {
           </CircleButton>
 
           {/* PRACTICE */}
-          <PracticeButton onPress={() => console.log("Start Practice")} />
+          {/* <PracticeButton onPress={() => console.log("Start Practice")} /> */}
 
           {/* THEME */}
           <CircleButton onPress={handleChangeTheme}>

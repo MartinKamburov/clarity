@@ -43,24 +43,23 @@ export const useQuotes = (userId: string | undefined) => {
             struggles: profile.struggles
         });
 
-        // 2. SAFETY CHECK: If no focus areas, STOP.
-        // This prevents the "Show All" bug.
-        if (!profile.focus_areas || profile.focus_areas.length === 0) {
-            console.warn("⛔ No Focus Areas found. Returning empty list.");
-            setQuotes([]); // Return nothing instead of everything
-            setLoading(false);
-            return;
-        }
+        // 2. CHECK FOR FOCUS AREAS
+        // We removed the return statement here so the code continues 
+        // even if focus_areas is empty or null.
+        const focusAreas = profile.focus_areas || [];
+        const hasFocusAreas = focusAreas.length > 0;
 
         // 3. QUERY: BROAD CANDIDATE POOL
         let query = supabase.from('quotes').select('*');
 
-        // A. Filter by Categories (Strict Overlap)
-        // Since we passed the Safety Check above, we KNOW this will run.
-        query = query.overlaps('categories', profile.focus_areas);
+        // If the user has specific areas, filter by them.
+        // If they are on "General" (no areas), DO NOT call .overlaps() 
+        // This will return all quotes, effectively creating a "General" mix.
+        if (hasFocusAreas) {
+          query = query.overlaps('categories', profile.focus_areas);
+        }
 
-        // B. Hard Filter: Spiritual Logic
-        // Strict: Only allow Spiritual if explicitly 'Yes'. Null/No = Block.
+        // Keep your other hard filters
         if (profile.manifestation_belief !== 'Yes') {
           query = query.eq('is_spiritual', false);
         }

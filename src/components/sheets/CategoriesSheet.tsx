@@ -1,8 +1,10 @@
-import React, { useMemo, useCallback, forwardRef } from 'react';
+import React, { useMemo, useCallback, forwardRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { User } from '@supabase/supabase-js';
+import { updateProfileFocus } from '../../services/updateProfileFocus';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48 - 12) / 2;
@@ -14,10 +16,33 @@ const CATEGORIES = [
   { id: 'custom', label: 'My own affirmations', icon: 'feather', locked: false },
 ];
 
+const PopularCategories = [
+  { id: 'Anxiety & Stress', label: 'Anxiety & Stress', icon: 'orbit', locked: false },
+  { id: 'Self-Love', label: 'Self-Love', icon: 'crystal-ball', locked: true },
+  { id: 'Career Growth', label: 'Career Growth', icon: 'heart-outline', locked: false },
+  { id: 'Confidence', label: 'Confidence', icon: 'feather', locked: false },
+]
+
 export const CategoriesSheet = forwardRef<BottomSheet>((props, ref) => {
   const snapPoints = useMemo(() => ['1%', '50%', '90%'], []);
 
-  const handlePress = () => Haptics.selectionAsync();
+  const handleCategoryPress = async (label: string | string[]) => {
+    Haptics.selectionAsync();
+    
+    // 2. Call the function
+    const result = await updateProfileFocus(label);
+    
+    if (result.success) {
+      console.log(`Updated focus to: ${label}`);
+      // Optional: Close sheet or show success toast
+      handleClose(); 
+    }
+  }
+
+  const handleMixPress = () => {
+    Haptics.selectionAsync();
+    console.log("Clicked the mix button");
+  }
 
   const handleClose = () => {
     // @ts-ignore
@@ -54,13 +79,13 @@ export const CategoriesSheet = forwardRef<BottomSheet>((props, ref) => {
       </View>
 
       <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
-        <TouchableOpacity style={styles.mixButton} onPress={handlePress}>
+        <TouchableOpacity style={styles.mixButton} onPress={handleMixPress}>
           <Text style={styles.mixButtonText}>Make your own mix</Text>
         </TouchableOpacity>
 
         <View style={styles.gridContainer}>
           {CATEGORIES.map((cat) => (
-            <TouchableOpacity key={cat.id} style={styles.card} onPress={handlePress}>
+            <TouchableOpacity key={cat.id} style={styles.card} onPress={() => handleCategoryPress(cat.label)}>
               <View style={styles.iconContainer}>
                 <MaterialCommunityIcons name={cat.icon as any} size={40} color="#DCE6F5" style={{ opacity: 0.8 }} />
               </View>
@@ -72,10 +97,10 @@ export const CategoriesSheet = forwardRef<BottomSheet>((props, ref) => {
           ))}
         </View>
 
-        <Text>Popular</Text>  
+        <Text style={styles.categoryLabels}>Popular</Text>  
         <View style={styles.gridContainer}>
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity key={cat.id} style={styles.card} onPress={handlePress}>
+          {PopularCategories.map((cat) => (
+            <TouchableOpacity key={cat.id} style={styles.card} onPress={() => handleCategoryPress(cat.label)}>
               <View style={styles.iconContainer}>
                 <MaterialCommunityIcons name={cat.icon as any} size={40} color="#DCE6F5" style={{ opacity: 0.8 }} />
               </View>
@@ -103,4 +128,5 @@ const styles = StyleSheet.create({
   iconContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   cardLabel: { color: '#E2E8F0', fontSize: 13, fontWeight: '500', flex: 1, marginRight: 8 },
+  categoryLabels: { color: '#FFFFFF', fontSize: 20, fontWeight: '500', paddingVertical: 20 }
 });
