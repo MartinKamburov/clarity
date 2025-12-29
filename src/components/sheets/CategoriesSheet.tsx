@@ -9,6 +9,12 @@ import { updateProfileFocus } from '../../services/updateProfileFocus';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48 - 12) / 2;
 
+// 1. Define the interface for your props
+interface CategoriesSheetProps {
+  user: User | null;
+  onUpdate: () => void;
+}
+
 const CATEGORIES = [
   { id: 'general', label: 'General', icon: 'orbit', locked: false },
   { id: 'reframe', label: 'Reframe Thoughts (AI)', icon: 'crystal-ball', locked: true },
@@ -23,18 +29,28 @@ const PopularCategories = [
   { id: 'Confidence', label: 'Confidence', icon: 'feather', locked: false },
 ]
 
-export const CategoriesSheet = forwardRef<BottomSheet>((props, ref) => {
+export const CategoriesSheet = forwardRef<BottomSheet, CategoriesSheetProps>((props, ref) => {
   const snapPoints = useMemo(() => ['1%', '50%', '90%'], []);
+
+  const { user, onUpdate } = props;
 
   const handleCategoryPress = async (label: string | string[]) => {
     Haptics.selectionAsync();
     
-    // 2. Call the function
+    // Check if user exists before attempting update
+    if (!user) {
+      console.error("No user available for update");
+      return;
+    }
+
     const result = await updateProfileFocus(label);
     
     if (result.success) {
       console.log(`Updated focus to: ${label}`);
-      // Optional: Close sheet or show success toast
+      
+      // 4. Trigger the refresh in HomeScreen
+      onUpdate();
+      
       handleClose(); 
     }
   }
@@ -45,8 +61,9 @@ export const CategoriesSheet = forwardRef<BottomSheet>((props, ref) => {
   }
 
   const handleClose = () => {
-    // @ts-ignore
-    ref?.current?.close();
+    if (ref && 'current' in ref) {
+      ref.current?.close();
+    }
   };
 
   const renderBackdrop = useCallback(

@@ -29,7 +29,12 @@ export default function HomeScreen() {
   // const [userId, setUserId] = useState<string | undefined>(undefined);
   // State for layout
   const [containerSize, setContainerSize] = useState<{ width: number, height: number } | null>(null);
-  
+  // 1. Keep this state for the signal
+  const [refreshSignal, setRefreshSignal] = useState(0);
+
+  // 2. Define the hook ONCE and pass the signal
+  const { quotes, loading } = useQuotes(user?.id, refreshSignal);
+
   // Refs for Sheets
   const categoriesSheetRef = useRef<BottomSheet>(null);
   const profileSheetRef = useRef<BottomSheet>(null);
@@ -44,8 +49,6 @@ export default function HomeScreen() {
       }
     });
   }, []);
-  // console.log("Here is the user: ", user);
-  const { quotes, loading } = useQuotes(user?.id);
 
   // --- ACTIONS ---
   const handleOpenCategories = () => {
@@ -139,7 +142,11 @@ export default function HomeScreen() {
       </SafeAreaView>
 
       {/* 3. SHEETS (Just drop them in here) */}
-      <CategoriesSheet ref={categoriesSheetRef} />
+      <CategoriesSheet 
+        ref={categoriesSheetRef} 
+        user={user} // Don't forget to pass the user prop!
+        onUpdate={() => setRefreshSignal(prev => prev + 1)} 
+      />
       <ProfileSheet ref={profileSheetRef} /> 
       <ThemeSheet ref={themeSheetRef} /> 
 

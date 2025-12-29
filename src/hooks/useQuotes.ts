@@ -13,7 +13,7 @@ export interface Quote {
   score?: number; 
 }
 
-export const useQuotes = (userId: string | undefined) => {
+export const useQuotes = (userId: string | undefined, refreshSignal: number) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,9 +38,9 @@ export const useQuotes = (userId: string | undefined) => {
 
         // --- DEBUGGING: Check what the DB is actually returning ---
         console.log("User Profile Loaded:", {
-            focus_areas: profile.focus_areas,
-            belief: profile.manifestation_belief,
-            struggles: profile.struggles
+          focus_areas: profile.focus_areas,
+          belief: profile.manifestation_belief,
+          struggles: profile.struggles
         });
 
         // 2. CHECK FOR FOCUS AREAS
@@ -116,7 +116,7 @@ export const useQuotes = (userId: string | undefined) => {
     };
 
     fetchSmartQuotes();
-  }, [userId]);
+  }, [userId, refreshSignal]);
 
   return { quotes, loading };
 };
