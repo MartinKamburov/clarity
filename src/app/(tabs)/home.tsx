@@ -8,6 +8,10 @@ import { supabase } from '../../lib/supabase';
 import { createUserProfile } from '../../services/profileService';
 import { User } from '@supabase/supabase-js';
 import { addFavoriteQuote } from '../../services/addFavoriteQuote';
+import { MotiView } from 'moti';
+import { removeFavoriteQuote } from '../../services/removeFavoriteQuote';
+import * as Haptics from 'expo-haptics';
+
 
 // --- CUSTOM COMPONENTS ---
 import { CircleButton } from '../../components/CircleButton';
@@ -35,6 +39,8 @@ export default function HomeScreen() {
 
   // 2. Define the hook ONCE and pass the signal
   const { quotes, loading } = useQuotes(user?.id, refreshSignal);
+  // ADD THIS: To track hearts locally without refreshing the list
+  const [localFavorites, setLocalFavorites] = useState<string[]>([]);
 
   // Refs for Sheets
   const categoriesSheetRef = useRef<BottomSheet>(null);
@@ -46,7 +52,6 @@ export default function HomeScreen() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUser(user);
-        // console.log("Home screen loaded for:", user.id);
       }
     });
   }, []);
@@ -64,8 +69,22 @@ export default function HomeScreen() {
     themeSheetRef.current?.snapToIndex(1); 
   };
 
-  const handleFavoriteButton = (item: typeof quotes[0], id: string) => {
-    addFavoriteQuote(item, id);
+  const handleFavoriteButton = async (item: typeof quotes[0], id: string) => {
+    const isCurrentlyFavorited = localFavorites.includes(item.id);
+    
+    if (isCurrentlyFavorited) {
+      Haptics.selectionAsync();
+      // 1. REMOVE FROM UI
+      setLocalFavorites(prev => prev.filter(id => id !== item.id));
+      // 2. REMOVE FROM DB
+      await removeFavoriteQuote(item, id);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // 1. ADD TO UI
+      setLocalFavorites(prev => [...prev, item.id]);
+      // 2. ADD TO DB
+      await addFavoriteQuote(item, id);
+    }
   }
 
   const handleShareButton = () => {
@@ -83,17 +102,36 @@ export default function HomeScreen() {
 
   const renderQuoteItem = ({ item }: { item: typeof quotes[0] }) => {
     if (!containerSize) return null;
+
+    // Check if this item was favorited in this session
+    const isFavorited = localFavorites.includes(item.id);
+
     return (
       <View style={{ width: containerSize.width, height: containerSize.height, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 }}>
         <Text style={styles.quoteText}>{item.content}</Text>
         <View style={styles.actionRow}>
-           {/* Using the new reusable button here too! */}
-           <CircleButton style={{ backgroundColor: 'transparent' }} onPress={handleShareButton}>
+          <CircleButton style={{ backgroundColor: 'transparent' }} onPress={handleShareButton}>
               <Feather name="share" size={24} color="#1A2F5A" />
-           </CircleButton>
-           <CircleButton style={{ backgroundColor: 'transparent' }} onPress={() => handleFavoriteButton(item, user.id)}>
-              <Feather name="heart" size={24} color="#1A2F5A"  />
-           </CircleButton>
+          </CircleButton>
+          
+          <CircleButton style={{ backgroundColor: 'transparent' }} onPress={() => handleFavoriteButton(item, user.id)}>
+              <MotiView
+                animate={{
+                  scale: isFavorited ? [1, 1.5, 1] : 1,
+                  rotate: isFavorited ? ['0deg', '15deg', '-15deg', '0deg'] : '0deg',
+                }}
+                transition={{
+                  type: 'spring',
+                  duration: 400,
+                }}
+              >
+                <MaterialCommunityIcons 
+                  name={isFavorited ? "heart" : "heart-outline"} 
+                  size={26} 
+                  color={isFavorited ? "#000000" : "#1A2F5A"}  
+                />
+              </MotiView>
+          </CircleButton>
         </View>
       </View>
     );
