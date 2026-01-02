@@ -37,11 +37,11 @@ export const useQuotes = (userId: string | undefined, refreshSignal: number) => 
         }
 
         // --- DEBUGGING: Check what the DB is actually returning ---
-        console.log("User Profile Loaded:", {
-          focus_areas: profile.focus_areas,
-          belief: profile.manifestation_belief,
-          struggles: profile.struggles
-        });
+        // console.log("User Profile Loaded:", {
+        //   focus_areas: profile.focus_areas,
+        //   belief: profile.manifestation_belief,
+        //   struggles: profile.struggles
+        // });
 
         // 2. CHECK FOR FOCUS AREAS
         // We removed the return statement here so the code continues 
@@ -49,8 +49,34 @@ export const useQuotes = (userId: string | undefined, refreshSignal: number) => 
         const focusAreas = profile.focus_areas || [];
         const hasFocusAreas = focusAreas.length > 0;
 
+        // A. IF CATEGORY IS FAVORITES, RUN SIMPLE QUERY
+        if (profile.focus_areas?.includes('favorites') || profile.focus_areas?.includes('Favorites')) {
+          const { data } = await supabase
+              .from('favorites')
+              .select('quotes (*)')
+              .eq('user_id', userId);
+              
+          const faves = data?.map((i: any) => i.quotes) || [];
+          setQuotes(faves);
+          setLoading(false);
+          return; // STOP HERE, don't run the recommendation algo
+        }
+
+        const { data: favData } = await supabase
+          .from('favorites')
+          .select('quote_id')
+          .eq('user_id', userId);
+        
+        // Create an array of IDs to exclude
+        const excludedIds = favData?.map(f => f.quote_id) || [];
+
         // 3. QUERY: BROAD CANDIDATE POOL
         let query = supabase.from('quotes').select('*');
+
+        // NEW: Exclude already favorited quotes if any exist
+        if (excludedIds.length > 0) {
+          query = query.not('id', 'in', `(${excludedIds.join(',')})`);
+        }
 
         // If the user has specific areas, filter by them.
         // If they are on "General" (no areas), DO NOT call .overlaps() 

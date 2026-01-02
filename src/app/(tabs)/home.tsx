@@ -7,6 +7,7 @@ import { useQuotes } from '../../hooks/useQuotes';
 import { supabase } from '../../lib/supabase';
 import { createUserProfile } from '../../services/profileService';
 import { User } from '@supabase/supabase-js';
+import { addFavoriteQuote } from '../../services/addFavoriteQuote';
 
 // --- CUSTOM COMPONENTS ---
 import { CircleButton } from '../../components/CircleButton';
@@ -63,6 +64,14 @@ export default function HomeScreen() {
     themeSheetRef.current?.snapToIndex(1); 
   };
 
+  const handleFavoriteButton = (item: typeof quotes[0], id: string) => {
+    addFavoriteQuote(item, id);
+  }
+
+  const handleShareButton = () => {
+    console.log("Reached the share button!");
+  }
+
   if (!user) return <LoadingScreen/>;
   if (loading) return <LoadingScreen/>;
 
@@ -79,11 +88,11 @@ export default function HomeScreen() {
         <Text style={styles.quoteText}>{item.content}</Text>
         <View style={styles.actionRow}>
            {/* Using the new reusable button here too! */}
-           <CircleButton style={{ backgroundColor: 'transparent' }}>
+           <CircleButton style={{ backgroundColor: 'transparent' }} onPress={handleShareButton}>
               <Feather name="share" size={24} color="#1A2F5A" />
            </CircleButton>
-           <CircleButton style={{ backgroundColor: 'transparent' }}>
-              <Feather name="heart" size={24} color="#1A2F5A" />
+           <CircleButton style={{ backgroundColor: 'transparent' }} onPress={() => handleFavoriteButton(item, user.id)}>
+              <Feather name="heart" size={24} color="#1A2F5A"  />
            </CircleButton>
         </View>
       </View>
