@@ -46,7 +46,6 @@ export default function HomeScreen() {
   const categoriesSheetRef = useRef<BottomSheet>(null);
   const profileSheetRef = useRef<BottomSheet>(null);
   const themeSheetRef = useRef<BottomSheet>(null);
-
   
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -55,6 +54,31 @@ export default function HomeScreen() {
       }
     });
   }, []);
+
+  // 1. Add this effect to fetch existing favorite IDs on mount
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const syncInitialFavorites = async () => {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('quote_id')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error syncing favorites:', error.message);
+        return;
+      }
+
+      if (data) {
+        // Extract only the IDs and put them into your local state
+        const ids = data.map((fav) => fav.quote_id);
+        setLocalFavorites(ids);
+      }
+    };
+
+    syncInitialFavorites();
+  }, [user?.id]); // Runs only when the user ID is available
 
   // --- ACTIONS ---
   const handleOpenCategories = () => {
