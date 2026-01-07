@@ -20,6 +20,9 @@ import { ProfileSheet } from '../../components/sheets/ProfileSheet';
 import { ThemeSheet } from '../../components/sheets/ThemeSheet';
 import LoadingScreen from '../../components/LoadingScreen';
 
+import { ImageBackground } from 'react-native'; // Import ImageBackground
+import { useThemes } from '../../hooks/useThemes'; // Import the hook
+
 // ==========================================================
 // 1. NEW COMPONENT: QuoteSlide
 // Handles the "Layers" to separate the screenshot from the buttons
@@ -28,12 +31,14 @@ const QuoteSlide = ({
   item, 
   size, 
   isFavorited, 
-  onToggleFavorite 
+  onToggleFavorite,
+  textColor // New Prop
 }: { 
   item: any, 
   size: { width: number, height: number }, 
   isFavorited: boolean, 
-  onToggleFavorite: () => void 
+  onToggleFavorite: () => void,
+  textColor: string // New Prop Type
 }) => {
   const viewShotRef = useRef<View>(null);
 
@@ -63,7 +68,8 @@ const QuoteSlide = ({
         style={[styles.slideCanvas, { width: size.width, height: size.height }]}
       >
         <View style={styles.textContainer}>
-          <Text style={styles.quoteText}>{item.content}</Text>
+          {/* USE DYNAMIC TEXT COLOR HERE */}
+          <Text style={[styles.quoteText, { color: textColor }]}>{item.content}</Text>
         </View>
       </View>
 
@@ -107,6 +113,8 @@ export default function HomeScreen() {
 
   const { quotes, loading } = useQuotes(user?.id, refreshSignal);
   const [localFavorites, setLocalFavorites] = useState<string[]>([]);
+
+  const { themes, activeTheme, selectTheme, loading: themesLoading } = useThemes(user?.id);
 
   // Refs for Sheets
   const categoriesSheetRef = useRef<BottomSheet>(null);
@@ -164,6 +172,8 @@ export default function HomeScreen() {
         size={containerSize}
         isFavorited={localFavorites.includes(item.id)}
         onToggleFavorite={() => handleToggleFavorite(item)}
+        // 2. PASS THEME COLOR TO SLIDE
+        textColor={activeTheme?.text_color_hex || '#FFFFFF'} 
       />
     );
   };
@@ -173,47 +183,58 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       
-      {/* 1. MAIN LIST */}
-      <View style={styles.listContainer} onLayout={onLayout}>
-        {containerSize && (
-          <FlatList
-            data={quotes}
-            renderItem={renderQuoteItem}
-            keyExtractor={(item) => item.id}
-            pagingEnabled
-            snapToAlignment="start"
-            decelerationRate="fast"
-            showsVerticalScrollIndicator={false}
-            getItemLayout={(data, index) => ({ length: containerSize.height, offset: containerSize.height * index, index })}
-          />
-        )}
-      </View>
-
-      {/* 2. FLOATING UI (Global Navigation) */}
-      <SafeAreaView style={styles.overlayContainer} pointerEvents="box-none">
-        <View style={styles.topBar}>
-          <CircleButton onPress={handleOpenProfile}>
-            <Feather name="user" size={24} color="#5A6B88" />
-          </CircleButton>
-          <CircleButton onPress={() => console.log("Subscribe")}>
-            <MaterialCommunityIcons name="crown-outline" size={26} color="#5A6B88" />
-          </CircleButton>
+      <ImageBackground 
+            source={activeTheme ? { uri: activeTheme.background_image_url } : undefined}
+            style={{ flex: 1, backgroundColor: activeTheme ? undefined : '#DCE6F5' }}
+            resizeMode="cover"
+        >
+        {/* 1. MAIN LIST */}
+        <View style={styles.listContainer} onLayout={onLayout}>
+            {containerSize && (
+            <FlatList
+                data={quotes}
+                renderItem={renderQuoteItem}
+                keyExtractor={(item) => item.id}
+                pagingEnabled
+                snapToAlignment="start"
+                decelerationRate="fast"
+                showsVerticalScrollIndicator={false}
+                getItemLayout={(data, index) => ({ length: containerSize.height, offset: containerSize.height * index, index })}
+            />
+            )}
         </View>
 
-        <View style={styles.bottomBar}>
-          <CircleButton onPress={handleOpenCategories}>
-            <Feather name="grid" size={24} color="#5A6B88" />
-          </CircleButton>
-          <CircleButton onPress={handleChangeTheme}>
-            <MaterialCommunityIcons name="format-paint" size={24} color="#5A6B88" />
-          </CircleButton>
-        </View>
-      </SafeAreaView>
+        {/* 2. FLOATING UI (Global Navigation) */}
+        <SafeAreaView style={styles.overlayContainer} pointerEvents="box-none">
+          <View style={styles.topBar}>
+            <CircleButton onPress={handleOpenProfile}>
+              <Feather name="user" size={24} color="#5A6B88" />
+            </CircleButton>
+            <CircleButton onPress={() => console.log("Subscribe")}>
+              <MaterialCommunityIcons name="crown-outline" size={26} color="#5A6B88" />
+            </CircleButton>
+          </View>
 
-      <CategoriesSheet ref={categoriesSheetRef} user={user} onUpdate={() => setRefreshSignal(prev => prev + 1)} />
-      <ProfileSheet ref={profileSheetRef} /> 
-      <ThemeSheet ref={themeSheetRef} /> 
+          <View style={styles.bottomBar}>
+            <CircleButton onPress={handleOpenCategories}>
+              <Feather name="grid" size={24} color="#5A6B88" />
+            </CircleButton>
+            <CircleButton onPress={handleChangeTheme}>
+              <MaterialCommunityIcons name="format-paint" size={24} color="#5A6B88" />
+            </CircleButton>
+          </View>
+        </SafeAreaView>
 
+        <CategoriesSheet ref={categoriesSheetRef} user={user} onUpdate={() => setRefreshSignal(prev => prev + 1)} />
+        <ProfileSheet ref={profileSheetRef} /> 
+        <ThemeSheet 
+            ref={themeSheetRef} 
+            themes={themes}
+            activeTheme={activeTheme}
+            onSelectTheme={selectTheme}
+            isLoading={themesLoading}
+        />
+      </ImageBackground>
     </View>
   );
 }
@@ -224,10 +245,10 @@ const styles = StyleSheet.create({
   
   // --- SLIDE STYLES (Fixes Overlap) ---
   slideCanvas: {
-    backgroundColor: '#DCE6F5', 
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30, // Keeps text away from edges
+    paddingHorizontal: 30, 
   },
   textContainer: {
     // This padding ensures the text never goes behind the buttons at the bottom
@@ -257,6 +278,7 @@ const styles = StyleSheet.create({
     gap: 30 
   },
 
+  
   // --- GLOBAL OVERLAY ---
   overlayContainer: { 
     ...StyleSheet.absoluteFillObject, 

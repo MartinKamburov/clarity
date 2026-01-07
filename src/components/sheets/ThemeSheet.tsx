@@ -1,29 +1,23 @@
 import React, { useMemo, useCallback, forwardRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, ScrollView, ActivityIndicator } from 'react-native';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'; // Added Icon for premium lock
 import * as Haptics from 'expo-haptics';
+import { Theme } from '../../hooks/useThemes'; // Import the interface
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 48 - 12) / 2; 
 
-const THEME_FILTERS = ['All', 'New', 'Seasonal', 'Most popular', 'Nature'];
+const THEME_FILTERS = ['All', 'Premium', 'Free']; // Simplified filters based on DB data
 
-const FEATURED_THEMES = [
-  { id: '1', title: 'Abstract Blue Waves', image: require('../../../assets/AbstractBlueWaves.png'), category: 'New' },
-  { id: '2', title: 'Frosted Glass', image: require('../../../assets/FrostedGlass.png'), category: 'Most popular' },
-];
+interface ThemeSheetProps {
+  themes: Theme[];
+  activeTheme: Theme | null;
+  onSelectTheme: (theme: Theme) => void;
+  isLoading: boolean;
+}
 
-const ALL_THEMES = [
-  { id: '1', title: 'Abstract Blue Waves', image: require('../../../assets/AbstractBlueWaves.png'), category: 'New' },
-  { id: '2', title: 'Frosted Glass', image: require('../../../assets/FrostedGlass.png'), category: 'Most popular' },
-  { id: '3', title: 'Mountain View', image: require('../../../assets/MountainLake.png'), category: 'Nature'},
-  { id: '4', title: 'Deep Ocean', image: require('../../../assets/AbstractBlueWaves.png'), category: 'Nature' },
-  { id: '5', title: 'Winter Mist', image: require('../../../assets/FrostedGlass.png'), category: 'Seasonal' },
-  { id: '6', title: 'Night Sky', image: require('../../../assets/MountainLake.png'), category: 'New' },
-];
-
-export const ThemeSheet = forwardRef<BottomSheet>((props, ref) => {
+export const ThemeSheet = forwardRef<BottomSheet, ThemeSheetProps>(({ themes, activeTheme, onSelectTheme, isLoading }, ref) => {
   const snapPoints = useMemo(() => ['1%', '50%', '90%'], []);
   const [selectedFilter, setSelectedFilter] = useState('All');
 
@@ -34,10 +28,13 @@ export const ThemeSheet = forwardRef<BottomSheet>((props, ref) => {
     ref?.current?.close();
   };
 
+  // Filter Logic
   const filteredThemes = useMemo(() => {
-    if (selectedFilter === 'All') return ALL_THEMES;
-    return ALL_THEMES.filter(theme => theme.category === selectedFilter);
-  }, [selectedFilter]);
+    if (selectedFilter === 'All') return themes;
+    if (selectedFilter === 'Premium') return themes.filter(t => t.is_premium);
+    if (selectedFilter === 'Free') return themes.filter(t => !t.is_premium);
+    return themes;
+  }, [selectedFilter, themes]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -72,94 +69,128 @@ export const ThemeSheet = forwardRef<BottomSheet>((props, ref) => {
         </TouchableOpacity>
       </View>
 
-      <BottomSheetScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* --- SCROLLABLE FILTERS (Including Create Button) --- */}
-        <View style={styles.filtersContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.filterScrollView}
-          >
-            {/* 1. Create Button (Now part of the scroll) */}
-            <TouchableOpacity style={styles.createButton} onPress={handlePress}>
-                <Feather name="plus" size={18} color="#E2E8F0" />
-                <Text style={styles.createButtonText}>Create</Text>
-            </TouchableOpacity>
-
-            {/* 2. Filter Tags */}
-            {THEME_FILTERS.map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterChip, 
-                  selectedFilter === filter && styles.filterChipActive
-                ]}
-                onPress={() => { 
-                  handlePress(); 
-                  setSelectedFilter(filter); 
-                }}
-              >
-                <Text style={[
-                  styles.filterText, 
-                  selectedFilter === filter && styles.filterTextActive
-                ]}>
-                  {filter}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+      {isLoading ? (
+        <View style={{ marginTop: 50 }}>
+            <ActivityIndicator size="large" color="#FFF" />
         </View>
+      ) : (
+        <BottomSheetScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            
+            {/* --- FILTERS --- */}
+            <View style={styles.filtersContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollView}>
+                {THEME_FILTERS.map((filter) => (
+                <TouchableOpacity
+                    key={filter}
+                    style={[
+                    styles.filterChip, 
+                    selectedFilter === filter && styles.filterChipActive
+                    ]}
+                    onPress={() => { 
+                    handlePress(); 
+                    setSelectedFilter(filter); 
+                    }}
+                >
+                    <Text style={[
+                    styles.filterText, 
+                    selectedFilter === filter && styles.filterTextActive
+                    ]}>
+                    {filter}
+                    </Text>
+                </TouchableOpacity>
+                ))}
+            </ScrollView>
+            </View>
 
-        {/* --- SECTION 1: THEME MIXES --- */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Theme mixes</Text>
-          <TouchableOpacity onPress={handlePress}><Text style={styles.seeAllText}>See all</Text></TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalThemes}>
-            {FEATURED_THEMES.map((theme) => (
-                <ThemeCard key={theme.id} theme={theme} onPress={handlePress} isHorizontal />
-            ))}
-        </ScrollView>
+            {/* --- GRID --- */}
+            <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>For you</Text>
+            </View>
+            
+            <View style={styles.gridContainer}>
+            {filteredThemes.length > 0 ? (
+                filteredThemes.map((theme) => (
+                <ThemeCard 
+                    key={theme.id} 
+                    theme={theme} 
+                    isActive={activeTheme?.id === theme.id}
+                    onPress={() => {
+                        handlePress();
+                        onSelectTheme(theme);
+                    }} 
+                />
+                ))
+            ) : (
+                <Text style={styles.emptyText}>No themes found.</Text>
+            )}
+            </View>
 
-
-        {/* --- SECTION 2: FOR YOU --- */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>For you</Text>
-        </View>
-        
-        <View style={styles.gridContainer}>
-          {filteredThemes.length > 0 ? (
-            filteredThemes.map((theme) => (
-              <ThemeCard key={theme.id} theme={theme} onPress={handlePress} />
-            ))
-          ) : (
-            <Text style={styles.emptyText}>No themes found for {selectedFilter}</Text>
-          )}
-        </View>
-
-      </BottomSheetScrollView>
+        </BottomSheetScrollView>
+      )}
     </BottomSheet>
   );
 });
 
 // --- SUB-COMPONENT: CARD ---
-const ThemeCard = ({ theme, onPress, isHorizontal }: { theme: any, onPress: () => void, isHorizontal?: boolean }) => (
+const ThemeCard = ({ theme, onPress, isActive }: { theme: Theme, onPress: () => void, isActive: boolean }) => (
     <TouchableOpacity 
-      style={[styles.themeCard, isHorizontal && styles.horizontalThemeCard]} 
+      style={[styles.themeCard, isActive && styles.activeCardBorder]} 
       onPress={onPress} 
       activeOpacity={0.9}
     >
-      <Image source={theme.image} style={styles.themeImage} resizeMode="cover" />
+      <Image source={{ uri: theme.background_image_url }} style={styles.themeImage} resizeMode="cover" />
+      
+      {/* Dark Overlay for Text Readability */}
       <View style={styles.themeOverlay}>
-        <Text style={styles.themeTitle}>{theme.title}</Text>
+        {isActive && (
+             <View style={styles.checkIcon}>
+                 <Feather name="check" size={14} color="#0F172A" />
+             </View>
+        )}
+        
+        <Text style={styles.themeTitle} numberOfLines={1}>{theme.name}</Text>
+        
+        {theme.is_premium && (
+            <View style={styles.lockBadge}>
+                 <MaterialCommunityIcons name="crown" size={12} color="#FFD700" />
+            </View>
+        )}
       </View>
     </TouchableOpacity>
 );
 
-
 const styles = StyleSheet.create({
-  // Header
+  // ... (Keep existing styles from your provided code) ...
+  // Add these for the new active/lock states:
+  activeCardBorder: {
+      borderWidth: 2,
+      borderColor: '#38BDF8', // Light blue selection border
+  },
+  checkIcon: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      backgroundColor: '#38BDF8',
+      borderRadius: 10,
+      width: 20,
+      height: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10,
+  },
+  lockBadge: {
+      position: 'absolute',
+      top: 8,
+      left: 8,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      borderRadius: 10,
+      width: 20,
+      height: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+  },
+
+  // (Paste rest of your styles here exactly as they were)
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,33 +225,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 12,
   },
-
-  // Scroll Content
   scrollContent: {
     paddingBottom: 50,
   },
-
-  // Filters
   filtersContainer: {
     paddingVertical: 16,
   },
   filterScrollView: {
     gap: 8,
-    paddingHorizontal: 24, // Padding applied to the SCROLL CONTENT, not the container
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    gap: 8,
-    marginRight: 8, // Extra spacing between Create and first filter
-  },
-  createButtonText: {
-    color: '#E2E8F0',
-    fontWeight: '600',
+    paddingHorizontal: 24, 
   },
   filterChip: {
     paddingVertical: 10,
@@ -241,13 +254,11 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: '#0F172A',
   },
-
-  // Sections
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24, // Consistent 24px padding for all headers
+    paddingHorizontal: 24, 
     marginBottom: 12,
     marginTop: 16,
   },
@@ -255,20 +266,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#F7FAFC',
-    // Removed paddingHorizontal from here to avoid double padding
   },
-  seeAllText: {
-    color: '#94A3B8',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  horizontalThemes: {
-    paddingHorizontal: 24,
-    gap: 12,
-    marginBottom: 24,
-  },
-
-  // Grid
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -283,18 +281,12 @@ const styles = StyleSheet.create({
     width: '100%',
     textAlign: 'center',
   },
-
-  // Theme Card
   themeCard: {
     width: GRID_ITEM_WIDTH,
     height: GRID_ITEM_WIDTH * 1.5,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  horizontalThemeCard: {
-      width: GRID_ITEM_WIDTH * 1.2,
-      height: GRID_ITEM_WIDTH * 0.8,
   },
   themeImage: {
     width: '100%',
