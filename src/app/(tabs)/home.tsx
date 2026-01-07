@@ -1,153 +1,87 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, LayoutChangeEvent, Button } from 'react-native';
+import { View, Text, StyleSheet, FlatList, LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
+import { MotiView } from 'moti';
+import * as Haptics from 'expo-haptics';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+
+// --- YOUR CUSTOM IMPORTS ---
 import { useQuotes } from '../../hooks/useQuotes';
 import { supabase } from '../../lib/supabase';
-import { createUserProfile } from '../../services/profileService';
 import { User } from '@supabase/supabase-js';
 import { addFavoriteQuote } from '../../services/addFavoriteQuote';
-import { MotiView } from 'moti';
 import { removeFavoriteQuote } from '../../services/removeFavoriteQuote';
-import * as Haptics from 'expo-haptics';
-
-
-// --- CUSTOM COMPONENTS ---
 import { CircleButton } from '../../components/CircleButton';
-import { PracticeButton } from '../../components/PracticeButton';
 import { CategoriesSheet } from '../../components/sheets/CategoriesSheet';
 import { ProfileSheet } from '../../components/sheets/ProfileSheet';
 import { ThemeSheet } from '../../components/sheets/ThemeSheet';
 import LoadingScreen from '../../components/LoadingScreen';
 
-// --- DUMMY DATA ---
-// const QUOTES = [
-//   { id: '1', text: "I am enough.\nI did enough.\nI can let go." },
-//   { id: '2', text: "Peace comes from within.\nDo not seek it without." },
-//   { id: '3', text: "Seek peace even when\npeace doesn't seek you." },
-// ];
+// ==========================================================
+// 1. NEW COMPONENT: QuoteSlide
+// Handles the "Layers" to separate the screenshot from the buttons
+// ==========================================================
+const QuoteSlide = ({ 
+  item, 
+  size, 
+  isFavorited, 
+  onToggleFavorite 
+}: { 
+  item: any, 
+  size: { width: number, height: number }, 
+  isFavorited: boolean, 
+  onToggleFavorite: () => void 
+}) => {
+  const viewShotRef = useRef<View>(null);
 
-export default function HomeScreen() {
-  // Get Current User ID (You'll likely store this in a Context later)
-  const [user, setUser] = useState<User | null>(null);
-  // const [userId, setUserId] = useState<string | undefined>(undefined);
-  // State for layout
-  const [containerSize, setContainerSize] = useState<{ width: number, height: number } | null>(null);
-  // 1. Keep this state for the signal
-  const [refreshSignal, setRefreshSignal] = useState(0);
-
-  // 2. Define the hook ONCE and pass the signal
-  const { quotes, loading } = useQuotes(user?.id, refreshSignal);
-  // ADD THIS: To track hearts locally without refreshing the list
-  const [localFavorites, setLocalFavorites] = useState<string[]>([]);
-
-  // Refs for Sheets
-  const categoriesSheetRef = useRef<BottomSheet>(null);
-  const profileSheetRef = useRef<BottomSheet>(null);
-  const themeSheetRef = useRef<BottomSheet>(null);
-  
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUser(user);
-      }
-    });
-  }, []);
-
-  // 1. Add this effect to fetch existing favorite IDs on mount
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const syncInitialFavorites = async () => {
-      const { data, error } = await supabase
-        .from('favorites')
-        .select('quote_id')
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error syncing favorites:', error.message);
-        return;
-      }
-
-      if (data) {
-        // Extract only the IDs and put them into your local state
-        const ids = data.map((fav) => fav.quote_id);
-        setLocalFavorites(ids);
-      }
-    };
-
-    syncInitialFavorites();
-  }, [user?.id]); // Runs only when the user ID is available
-
-  // --- ACTIONS ---
-  const handleOpenCategories = () => {
-    categoriesSheetRef.current?.snapToIndex(2); 
-  };
-
-  const handleOpenProfile = () => {
-    profileSheetRef.current?.snapToIndex(0);  //When you snap to an index you are snapping to one of these options and in profile sheet we only have: useMemo(() => ['90%'], []); so we can only snap to the 0th index
-  };
-
-  const handleChangeTheme = () => {
-    themeSheetRef.current?.snapToIndex(1); 
-  };
-
-  const handleFavoriteButton = async (item: typeof quotes[0], id: string) => {
-    const isCurrentlyFavorited = localFavorites.includes(item.id);
-    
-    if (isCurrentlyFavorited) {
-      Haptics.selectionAsync();
-      // 1. REMOVE FROM UI
-      setLocalFavorites(prev => prev.filter(id => id !== item.id));
-      // 2. REMOVE FROM DB
-      await removeFavoriteQuote(item, id);
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      // 1. ADD TO UI
-      setLocalFavorites(prev => [...prev, item.id]);
-      // 2. ADD TO DB
-      await addFavoriteQuote(item, id);
+  const handleShare = async () => {
+    try {
+      // 1. Capture ONLY the Background Layer (viewShotRef)
+      const uri = await captureRef(viewShotRef, {
+        format: 'png',
+        quality: 1.0, // High quality for the share sheet
+      });
+      
+      // 2. Open the Share Sheet (This creates the view in your screenshot)
+      await Sharing.shareAsync(uri);
+    } catch (error) {
+      console.error("Sharing failed", error);
     }
-  }
-
-  const handleShareButton = () => {
-    console.log("Reached the share button!");
-  }
-
-  if (!user) return <LoadingScreen/>;
-  if (loading) return <LoadingScreen/>;
-
-  // --- RENDERERS ---
-  const onLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setContainerSize({ width, height });
   };
 
-  const renderQuoteItem = ({ item }: { item: typeof quotes[0] }) => {
-    if (!containerSize) return null;
+  return (
+    <View style={{ width: size.width, height: size.height }}>
+      
+      {/* LAYER A: THE SCREENSHOT (Background + Text) */}
+      {/* This is what gets shared. It fills the screen but sits 'behind' the buttons */}
+      <View 
+        ref={viewShotRef} 
+        collapsable={false} 
+        style={[styles.slideCanvas, { width: size.width, height: size.height }]}
+      >
+        <View style={styles.textContainer}>
+          <Text style={styles.quoteText}>{item.content}</Text>
+        </View>
+      </View>
 
-    // Check if this item was favorited in this session
-    const isFavorited = localFavorites.includes(item.id);
-
-    return (
-      <View style={{ width: containerSize.width, height: containerSize.height, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 }}>
-        <Text style={styles.quoteText}>{item.content}</Text>
+      {/* LAYER B: THE CONTROLS (Buttons) */}
+      {/* Absolute positioned on top. NOT included in the screenshot ref */}
+      <View style={styles.controlsLayer}>
         <View style={styles.actionRow}>
-          <CircleButton style={{ backgroundColor: 'transparent' }} onPress={handleShareButton}>
+           <CircleButton style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} onPress={handleShare}>
               <Feather name="share" size={24} color="#1A2F5A" />
-          </CircleButton>
-          
-          <CircleButton style={{ backgroundColor: 'transparent' }} onPress={() => handleFavoriteButton(item, user.id)}>
+           </CircleButton>
+           
+           <CircleButton style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} onPress={onToggleFavorite}>
               <MotiView
                 animate={{
                   scale: isFavorited ? [1, 1.5, 1] : 1,
                   rotate: isFavorited ? ['0deg', '15deg', '-15deg', '0deg'] : '0deg',
                 }}
-                transition={{
-                  type: 'spring',
-                  duration: 400,
-                }}
+                transition={{ type: 'spring', duration: 400 }}
               >
                 <MaterialCommunityIcons 
                   name={isFavorited ? "heart" : "heart-outline"} 
@@ -155,11 +89,86 @@ export default function HomeScreen() {
                   color={isFavorited ? "#000000" : "#1A2F5A"}  
                 />
               </MotiView>
-          </CircleButton>
+           </CircleButton>
         </View>
       </View>
+
+    </View>
+  );
+};
+
+// ==========================================================
+// MAIN HOME SCREEN
+// ==========================================================
+export default function HomeScreen() {
+  const [user, setUser] = useState<User | null>(null);
+  const [containerSize, setContainerSize] = useState<{ width: number, height: number } | null>(null);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+
+  const { quotes, loading } = useQuotes(user?.id, refreshSignal);
+  const [localFavorites, setLocalFavorites] = useState<string[]>([]);
+
+  // Refs for Sheets
+  const categoriesSheetRef = useRef<BottomSheet>(null);
+  const profileSheetRef = useRef<BottomSheet>(null);
+  const themeSheetRef = useRef<BottomSheet>(null);
+  
+  // --- EFFECTS ---
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUser(user);
+    });
+  }, []);
+
+  // Sync Favorites on Load
+  useEffect(() => {
+    if (!user?.id) return;
+    const syncInitialFavorites = async () => {
+      const { data } = await supabase.from('favorites').select('quote_id').eq('user_id', user.id);
+      if (data) setLocalFavorites(data.map((fav) => fav.quote_id));
+    };
+    syncInitialFavorites();
+  }, [user?.id]);
+
+  // --- ACTIONS ---
+  const handleOpenCategories = () => categoriesSheetRef.current?.snapToIndex(2); 
+  const handleOpenProfile = () => profileSheetRef.current?.snapToIndex(0);
+  const handleChangeTheme = () => themeSheetRef.current?.snapToIndex(1); 
+
+  // Toggle Logic (Passed down to QuoteSlide)
+  const handleToggleFavorite = async (item: typeof quotes[0]) => {
+    const isCurrentlyFavorited = localFavorites.includes(item.id);
+    
+    if (isCurrentlyFavorited) {
+      Haptics.selectionAsync();
+      setLocalFavorites(prev => prev.filter(id => id !== item.id));
+      await removeFavoriteQuote(item, user!.id);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setLocalFavorites(prev => [...prev, item.id]);
+      await addFavoriteQuote(item, user!.id);
+    }
+  };
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setContainerSize({ width, height });
+  };
+
+  // --- RENDERER ---
+  const renderQuoteItem = ({ item }: { item: typeof quotes[0] }) => {
+    if (!containerSize) return null;
+    return (
+      <QuoteSlide 
+        item={item}
+        size={containerSize}
+        isFavorited={localFavorites.includes(item.id)}
+        onToggleFavorite={() => handleToggleFavorite(item)}
+      />
     );
   };
+
+  if (!user || loading) return <LoadingScreen/>;
 
   return (
     <View style={styles.container}>
@@ -180,44 +189,28 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* 2. FLOATING UI */}
+      {/* 2. FLOATING UI (Global Navigation) */}
       <SafeAreaView style={styles.overlayContainer} pointerEvents="box-none">
-        
-        {/* Top Bar */}
         <View style={styles.topBar}>
           <CircleButton onPress={handleOpenProfile}>
             <Feather name="user" size={24} color="#5A6B88" />
           </CircleButton>
-          
           <CircleButton onPress={() => console.log("Subscribe")}>
             <MaterialCommunityIcons name="crown-outline" size={26} color="#5A6B88" />
           </CircleButton>
         </View>
 
-        {/* Bottom Bar */}
         <View style={styles.bottomBar}>
-          {/* CATEGORIES */}
           <CircleButton onPress={handleOpenCategories}>
             <Feather name="grid" size={24} color="#5A6B88" />
           </CircleButton>
-
-          {/* PRACTICE */}
-          {/* <PracticeButton onPress={() => console.log("Start Practice")} /> */}
-
-          {/* THEME */}
           <CircleButton onPress={handleChangeTheme}>
             <MaterialCommunityIcons name="format-paint" size={24} color="#5A6B88" />
           </CircleButton>
         </View>
-
       </SafeAreaView>
 
-      {/* 3. SHEETS (Just drop them in here) */}
-      <CategoriesSheet 
-        ref={categoriesSheetRef} 
-        user={user} // Don't forget to pass the user prop!
-        onUpdate={() => setRefreshSignal(prev => prev + 1)} 
-      />
+      <CategoriesSheet ref={categoriesSheetRef} user={user} onUpdate={() => setRefreshSignal(prev => prev + 1)} />
       <ProfileSheet ref={profileSheetRef} /> 
       <ThemeSheet ref={themeSheetRef} /> 
 
@@ -228,11 +221,49 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#DCE6F5' },
   listContainer: { flex: 1 },
-  overlayContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 20 },
+  
+  // --- SLIDE STYLES (Fixes Overlap) ---
+  slideCanvas: {
+    backgroundColor: '#DCE6F5', 
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30, // Keeps text away from edges
+  },
+  textContainer: {
+    // This padding ensures the text never goes behind the buttons at the bottom
+    paddingBottom: 150, 
+    width: '100%',
+    alignItems: 'center',
+  },
+  quoteText: { 
+    fontSize: 32, 
+    fontWeight: '600', 
+    color: '#1A2F5A', 
+    textAlign: 'center', 
+    lineHeight: 44 
+  },
+  
+  // --- CONTROLS LAYER (Floating) ---
+  controlsLayer: {
+    position: 'absolute',
+    bottom: 140, // Fixed distance from bottom
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10, // Ensures buttons are clickable
+  },
+  actionRow: { 
+    flexDirection: 'row', 
+    gap: 30 
+  },
+
+  // --- GLOBAL OVERLAY ---
+  overlayContainer: { 
+    ...StyleSheet.absoluteFillObject, 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 24, 
+    paddingBottom: 20 
+  },
   topBar: { flexDirection: 'row', justifyContent: 'space-between' },
   bottomBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  
-  // Quote Specifics
-  quoteText: { fontSize: 32, fontWeight: '600', color: '#1A2F5A', textAlign: 'center', lineHeight: 44, marginBottom: 40 },
-  actionRow: { flexDirection: 'row', gap: 20 },
 });
