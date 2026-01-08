@@ -255,7 +255,7 @@ export default function HomeScreen() {
         </SafeAreaView>
 
         <CategoriesSheet ref={categoriesSheetRef} user={user} onUpdate={() => setRefreshSignal(prev => prev + 1)} />
-        <ProfileSheet ref={profileSheetRef} /> 
+        <ProfileSheet ref={profileSheetRef} userId={user?.id} /> 
         <ThemeSheet 
             ref={themeSheetRef} 
             themes={themes}
