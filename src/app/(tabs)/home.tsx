@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, LayoutChangeEvent } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList, LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -32,25 +32,25 @@ const QuoteSlide = ({
   size, 
   isFavorited, 
   onToggleFavorite,
-  textColor // New Prop
+  textColor,
+  backgroundImageUrl 
 }: { 
   item: any, 
   size: { width: number, height: number }, 
   isFavorited: boolean, 
   onToggleFavorite: () => void,
-  textColor: string // New Prop Type
+  textColor: string,
+  backgroundImageUrl?: string 
 }) => {
   const viewShotRef = useRef<View>(null);
 
   const handleShare = async () => {
     try {
-      // 1. Capture ONLY the Background Layer (viewShotRef)
+      // Capture the HIDDEN view (viewShotRef) which contains the background
       const uri = await captureRef(viewShotRef, {
         format: 'png',
-        quality: 1.0, // High quality for the share sheet
+        quality: 1.0,
       });
-      
-      // 2. Open the Share Sheet (This creates the view in your screenshot)
       await Sharing.shareAsync(uri);
     } catch (error) {
       console.error("Sharing failed", error);
@@ -60,21 +60,49 @@ const QuoteSlide = ({
   return (
     <View style={{ width: size.width, height: size.height }}>
       
-      {/* LAYER A: THE SCREENSHOT (Background + Text) */}
-      {/* This is what gets shared. It fills the screen but sits 'behind' the buttons */}
-      <View 
-        ref={viewShotRef} 
-        collapsable={false} 
-        style={[styles.slideCanvas, { width: size.width, height: size.height }]}
-      >
+      {/* ============================================================
+          1. THE "HIDDEN PRINTER" LAYER 
+          This is wrapped in a 0-height view so the user DOES NOT see it.
+          It exists solely to be captured by the screenshot tool.
+      ============================================================= */}
+      <View style={{ height: 0, overflow: 'hidden' }}>
+        <View 
+            ref={viewShotRef}
+            collapsable={false}
+            style={{ width: size.width, height: size.height, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 }}
+        >
+             {/* The Background Image (Only for screenshot) */}
+             {backgroundImageUrl ? (
+                <Image 
+                    source={{ uri: backgroundImageUrl }} 
+                    style={StyleSheet.absoluteFillObject} 
+                    resizeMode="cover"
+                />
+            ) : (
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#DCE6F5' }]} />
+            )}
+            
+            {/* The Text (Only for screenshot) */}
+            <Text style={[styles.quoteText, { color: textColor }]}>{item.content}</Text>
+            
+            {/* Optional: Add a small watermark or app name here if you want */}
+        </View>
+      </View>
+
+      {/* ============================================================
+          2. THE VISIBLE UI LAYER 
+          This is transparent so the HomeScreen background shows through.
+          This gives you the "Endless Scroll" effect.
+      ============================================================= */}
+      <View style={[styles.slideCanvas, { width: size.width, height: size.height }]}>
         <View style={styles.textContainer}>
-          {/* USE DYNAMIC TEXT COLOR HERE */}
           <Text style={[styles.quoteText, { color: textColor }]}>{item.content}</Text>
         </View>
       </View>
 
-      {/* LAYER B: THE CONTROLS (Buttons) */}
-      {/* Absolute positioned on top. NOT included in the screenshot ref */}
+      {/* ============================================================
+          3. THE CONTROLS LAYER (Floating Buttons)
+      ============================================================= */}
       <View style={styles.controlsLayer}>
         <View style={styles.actionRow}>
            <CircleButton style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} onPress={handleShare}>
@@ -174,6 +202,7 @@ export default function HomeScreen() {
         onToggleFavorite={() => handleToggleFavorite(item)}
         // 2. PASS THEME COLOR TO SLIDE
         textColor={activeTheme?.text_color_hex || '#FFFFFF'} 
+        backgroundImageUrl={activeTheme?.background_image_url}
       />
     );
   };
