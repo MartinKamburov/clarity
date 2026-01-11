@@ -19,6 +19,7 @@ import { StreakShareCard, StreakShareCardRef } from '../StreakShareCard';
 import { FavoritesList } from './FavoritesList';
 import { HistoryList } from './HistoryList';
 import { Alarm } from './Alarm';
+import { Reminders } from './Reminders';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 48 - 12) / 2;
@@ -104,6 +105,7 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
     if (selectedPage === 'Favorites') return <FavoritesList userId={props.userId} />;
     if (selectedPage === 'History') return <HistoryList userId={props.userId} />;
     if (selectedPage === 'Alarm') return <Alarm />;
+    if (selectedPage === 'Reminders') return <Reminders userId={props.userId} />;
 
     return (
         <View style={styles.centerContainer}>
