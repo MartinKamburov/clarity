@@ -10,11 +10,14 @@ import Animated, {
   Easing,
   runOnJS 
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// --- IMPORTS ---
 import { useStreak } from '../../hooks/useStreak';
 import { format, addDays, isAfter, isSameDay, subDays } from 'date-fns';
 import { StreakShareCard, StreakShareCardRef } from '../StreakShareCard';
+
+import { FavoritesList } from './FavoritesList';
+import { HistoryList } from './HistoryList';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 48 - 12) / 2;
@@ -24,14 +27,13 @@ interface ProfileSheetProps {
 }
 
 export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, ref) => {
-  // 1. CAP HEIGHT AT 85%
-  const snapPoints = useMemo(() => ['85%'], []);
+  const insets = useSafeAreaInsets();
   
-  // 2. STATE & ANIMATION
+  const snapPoints = useMemo(() => ['85%'], []);
   const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const slideAnim = useSharedValue(0); 
 
-  // 3. DATA
+  // Data
   const { streak, activityLog } = useStreak(props.userId);
   const shareCardRef = useRef<StreakShareCardRef>(null);
 
@@ -42,7 +44,6 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
 
   // --- HANDLERS ---
   const handlePress = () => Haptics.selectionAsync();
-  
   const handleClose = () => {
     // @ts-ignore
     ref?.current?.close();
@@ -55,33 +56,38 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
     }
   };
 
-  // --- NAVIGATION (No Shaking) ---
+  // --- NAVIGATION ---
   const openSubPage = (pageTitle: string) => {
     Haptics.selectionAsync();
     setSelectedPage(pageTitle);
-    slideAnim.value = withTiming(1, { 
-        duration: 300, 
-        easing: Easing.out(Easing.quad) 
-    });
+    slideAnim.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.quad) });
   };
 
   const closeSubPage = () => {
     Haptics.selectionAsync();
-    slideAnim.value = withTiming(0, { 
-        duration: 300, 
-        easing: Easing.out(Easing.quad) 
-    }, (finished) => {
+    slideAnim.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.quad) }, (finished) => {
       if (finished) {
         runOnJS(setSelectedPage)(null);
       }
     });
   };
 
+  // Slide Layer 2 (SubPage) IN from the right
   const subPageStyle = useAnimatedStyle(() => {
     return {
       transform: [
         { translateX: (1 - slideAnim.value) * width } 
       ],
+    };
+  });
+
+  // Slide Layer 1 (Main Menu) OUT to the left
+  const mainMenuAnimStyle = useAnimatedStyle(() => {
+    return {
+        transform: [
+            { translateX: -slideAnim.value * (width * 0.3) }, // Parallax effect
+        ],
+        opacity: 1 - slideAnim.value, // Fade out main menu
     };
   });
 
@@ -92,12 +98,25 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
     []
   );
 
+  // --- RENDER SUB-PAGES ---
+  const renderSubPageContent = () => {
+    if (selectedPage === 'Favorites') return <FavoritesList userId={props.userId} />;
+    if (selectedPage === 'History') return <HistoryList userId={props.userId} />;
+
+    return (
+        <View style={styles.centerContainer}>
+            <MaterialCommunityIcons name="tools" size={48} color="rgba(255,255,255,0.1)" />
+            <Text style={styles.subPagePlaceholderText}>Settings for {selectedPage} coming soon.</Text>
+        </View>
+    );
+  };
+
   return (
     <BottomSheet
       ref={ref}
       index={-1}
       snapPoints={snapPoints}
-      enablePanDownToClose={selectedPage === null}
+      enablePanDownToClose={selectedPage === null} // Disable closing via swipe if in subpage (optional)
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: '#0F172A' }} 
       handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.2)', width: 40 }}
@@ -107,7 +126,8 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
       <View style={{ flex: 1, overflow: 'hidden' }}>
         
         {/* === LAYER 1: MAIN CONTENT === */}
-        <View style={{ flex: 1 }}>
+        {/* We animate this view away so it doesn't conflict with Layer 2 */}
+        <Animated.View style={[{ flex: 1 }, mainMenuAnimStyle]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
               <Feather name="x" size={22} color="#E2E8F0" />
@@ -119,7 +139,9 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
           </View>
 
           <BottomSheetScrollView 
-            style={{ flex: 1 }} // Explicit flex for the scrollview
+            style={{ flex: 1 }} 
+            // Important: Disable scrolling on this layer when hidden
+            scrollEnabled={selectedPage === null}
             contentContainerStyle={styles.scrollContent} 
             showsVerticalScrollIndicator={false}
           >
@@ -144,10 +166,10 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
 
                <View style={styles.streakRightContainer}>
                   <View style={styles.streakHeaderRow}>
-                     <Text style={styles.streakTitle}>Your streak</Text>
-                     <TouchableOpacity onPress={handleSharePress} hitSlop={10}>
-                        <Feather name="share" size={16} color="#94A3B8" />
-                     </TouchableOpacity>
+                      <Text style={styles.streakTitle}>Your streak</Text>
+                      <TouchableOpacity onPress={handleSharePress} hitSlop={10}>
+                         <Feather name="share" size={16} color="#94A3B8" />
+                      </TouchableOpacity>
                   </View>
 
                   <View style={styles.daysRow}>
@@ -196,27 +218,27 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
                 <ContentItem label="My affirmations" icon="fountain-pen-tip" onPress={() => openSubPage("My affirmations")} />
                 <ContentItem label="History" icon="history" onPress={() => openSubPage("History")} />
             </View>
-          </BottomSheetScrollView>
-        </View>
 
+          </BottomSheetScrollView>
+        </Animated.View>
 
         {/* === LAYER 2: DETAIL SUB-PAGE === */}
-        <Animated.View style={[styles.subPageContainer, subPageStyle]}>
+        {/* We use pointerEvents to ensure clicks pass through to Layer 1 when closed */}
+        <Animated.View 
+            pointerEvents={selectedPage ? 'auto' : 'none'}
+            style={[styles.subPageContainer, subPageStyle]}
+        >
           <View style={styles.header}>
             <TouchableOpacity onPress={closeSubPage} style={styles.iconButton}>
               <Feather name="chevron-left" size={24} color="#E2E8F0" />
             </TouchableOpacity>
-            
             <Text style={styles.headerTitle}>{selectedPage}</Text>
-            
             <View style={{ width: 40 }} />
           </View>
 
-          <View style={styles.subPageContent}>
-             <MaterialCommunityIcons name="tools" size={48} color="rgba(255,255,255,0.1)" />
-             <Text style={styles.subPagePlaceholderText}>
-               Settings for {selectedPage} coming soon.
-             </Text>
+          <View style={{ flex: 1 }}>
+             {/* Only render content if we have a page selected to save resources */}
+             {selectedPage && renderSubPageContent()}
           </View>
         </Animated.View>
 
@@ -225,7 +247,7 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
   );
 });
 
-// --- SUB-COMPONENTS ---
+// ... styles remain unchanged ...
 const GridItem = ({ label, icon, onPress }: { label: string, icon: any, onPress: () => void }) => (
     <TouchableOpacity style={styles.gridCard} onPress={onPress} activeOpacity={0.8}>
         <View style={styles.gridIconContainer}>
@@ -268,15 +290,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
-  // FIX: Increased bottom padding drastically to ensure full visibility
   scrollContent: {
     padding: 24,
-    paddingBottom: 150, 
-    flexGrow: 1, // Ensures container takes up space even if content is small
+    paddingBottom: 300, // Reduced padding here, BottomSheet handles the rest
+    flexGrow: 1, 
   },
-  
-  // ... (Banner, Streak, and Grid styles same as before) ...
   banner: {
     backgroundColor: '#DCE6F5', 
     borderRadius: 20,
@@ -286,21 +304,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 24,
   },
-  bannerContent: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  bannerTitle: {
-    color: '#1A2F5A', 
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  bannerSubtitle: {
-    color: '#334155', 
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  bannerContent: { flex: 1, paddingRight: 10 },
+  bannerTitle: { color: '#1A2F5A', fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  bannerSubtitle: { color: '#334155', fontSize: 13, lineHeight: 18 },
   streakCard: {
     backgroundColor: 'rgba(0,0,0,0.25)', 
     borderRadius: 24,
@@ -313,9 +319,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   streakLeftContainer: { alignItems: 'center', justifyContent: 'center' },
-  bigRing: {
-    width: 70, height: 70, borderRadius: 35, borderWidth: 3, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center',
-  },
+  bigRing: { width: 70, height: 70, borderRadius: 35, borderWidth: 3, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
   bigStreakNumber: { fontSize: 24, fontWeight: '800', color: '#FFF', lineHeight: 24 },
   bigStreakLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
   sparkleIcon: { position: 'absolute', top: 0, right: 0, backgroundColor: '#0F172A', borderRadius: 8 },
@@ -345,16 +349,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A', 
     zIndex: 10, 
   },
-  subPageContent: {
+  centerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
     gap: 16,
+    padding: 24,
   },
   subPagePlaceholderText: {
     color: '#94A3B8',
     fontSize: 16,
     textAlign: 'center',
-  }
+  },
 });

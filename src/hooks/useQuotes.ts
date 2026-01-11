@@ -8,7 +8,7 @@ export interface Quote {
   author: string;
   vibe: string;
   tags: string[];
-  categories: string[]; // This matches your DB Array type
+  categories: string[]; 
   is_premium: boolean;
   score?: number; 
 }
@@ -36,20 +36,11 @@ export const useQuotes = (userId: string | undefined, refreshSignal: number) => 
           return;
         }
 
-        // --- DEBUGGING: Check what the DB is actually returning ---
-        // console.log("User Profile Loaded:", {
-        //   focus_areas: profile.focus_areas,
-        //   belief: profile.manifestation_belief,
-        //   struggles: profile.struggles
-        // });
-
         // 2. CHECK FOR FOCUS AREAS
-        // We removed the return statement here so the code continues 
-        // even if focus_areas is empty or null.
         const focusAreas = profile.focus_areas || [];
         const hasFocusAreas = focusAreas.length > 0;
 
-        // A. IF CATEGORY IS FAVORITES, RUN SIMPLE QUERY
+        // A. IF CATEGORY IS FAVORITES, RUN SIMPLE QUERY (Skip history filter)
         if (profile.focus_areas?.includes('favorites') || profile.focus_areas?.includes('Favorites')) {
           const { data } = await supabase
               .from('favorites')
@@ -59,38 +50,53 @@ export const useQuotes = (userId: string | undefined, refreshSignal: number) => 
           const faves = data?.map((i: any) => i.quotes) || [];
           setQuotes(faves);
           setLoading(false);
-          return; // STOP HERE, don't run the recommendation algo
+          return; 
         }
 
+        // --- FETCH EXCLUSIONS (Favorites + Recently Seen) ---
+        
+        // A. Get Favorites (Exclude already saved ones)
         const { data: favData } = await supabase
           .from('favorites')
           .select('quote_id')
           .eq('user_id', userId);
+
+        // B. Get History (Exclude quotes seen in last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const { data: historyData } = await supabase
+            .from('quote_history')
+            .select('quote_id')
+            .eq('user_id', userId)
+            .gt('last_seen_at', thirtyDaysAgo.toISOString()); // Only fetch recent ones
+
+        // Combine IDs to exclude
+        const favIds = favData?.map(f => f.quote_id) || [];
+        const seenIds = historyData?.map(h => h.quote_id) || [];
         
-        // Create an array of IDs to exclude
-        const excludedIds = favData?.map(f => f.quote_id) || [];
+        // Merge arrays and remove duplicates
+        const excludedIds = [...new Set([...favIds, ...seenIds])];
 
         // 3. QUERY: BROAD CANDIDATE POOL
         let query = supabase.from('quotes').select('*');
 
-        // NEW: Exclude already favorited quotes if any exist
+        // NEW: Exclude both Favorites AND Recently Seen history
         if (excludedIds.length > 0) {
           query = query.not('id', 'in', `(${excludedIds.join(',')})`);
         }
 
-        // If the user has specific areas, filter by them.
-        // If they are on "General" (no areas), DO NOT call .overlaps() 
-        // This will return all quotes, effectively creating a "General" mix.
+        // Apply Focus Area Filters
         if (hasFocusAreas) {
           query = query.overlaps('categories', profile.focus_areas);
         }
 
-        // Keep your other hard filters
+        // Hard Filter: Belief
         if (profile.manifestation_belief !== 'Yes') {
           query = query.eq('is_spiritual', false);
         }
 
-        // C. Hard Filter: Premium
+        // Hard Filter: Premium
         if (!profile.is_premium) {
           query = query.eq('is_premium', false);
         }
@@ -100,7 +106,7 @@ export const useQuotes = (userId: string | undefined, refreshSignal: number) => 
         if (quoteError) throw quoteError;
 
         if (candidates) {
-          // 4. THE RECOMMENDATION ALGORITHM
+          // 4. THE RECOMMENDATION ALGORITHM (UNCHANGED)
           const rankedQuotes = candidates.map((quote) => {
             let score = 0;
 
@@ -114,7 +120,6 @@ export const useQuotes = (userId: string | undefined, refreshSignal: number) => 
             if (struggleMatch) score += 15;
 
             // --- CRITERIA 3: FOCUS AREA DENSITY (+10 Points per match) ---
-            // Safety: Ensure quote.categories exists before filtering
             if (profile.focus_areas && quote.categories) {
                const matchCount = quote.categories.filter((cat: string) => 
                  profile.focus_areas.includes(cat)

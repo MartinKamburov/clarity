@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ import { CategoriesSheet } from '../../components/sheets/CategoriesSheet';
 import { ProfileSheet } from '../../components/sheets/ProfileSheet';
 import { ThemeSheet } from '../../components/sheets/ThemeSheet';
 import LoadingScreen from '../../components/LoadingScreen';
+import { markQuoteAsSeen } from '../../services/markQuoteAsSeen';
 
 import { ImageBackground } from 'react-native'; // Import ImageBackground
 import { useThemes } from '../../hooks/useThemes'; // Import the hook
@@ -144,6 +145,11 @@ export default function HomeScreen() {
 
   const { themes, activeTheme, selectTheme, loading: themesLoading } = useThemes(user?.id);
 
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 500, 
+  }).current;
+
   // Refs for Sheets
   const categoriesSheetRef = useRef<BottomSheet>(null);
   const profileSheetRef = useRef<BottomSheet>(null);
@@ -207,6 +213,18 @@ export default function HomeScreen() {
     );
   };
 
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+    if (viewableItems.length > 0 && user?.id) {
+      const currentItem = viewableItems[0].item;
+      
+      // Mark as seen in DB
+      if (currentItem && currentItem.id) {
+          // We fire and forget (don't await) to keep UI smooth
+          markQuoteAsSeen(currentItem.id, user.id);
+      }
+    }
+  }, [user?.id]);
+
   if (!user || loading) return <LoadingScreen/>;
 
   return (
@@ -229,6 +247,8 @@ export default function HomeScreen() {
                 decelerationRate="fast"
                 showsVerticalScrollIndicator={false}
                 getItemLayout={(data, index) => ({ length: containerSize.height, offset: containerSize.height * index, index })}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
             />
             )}
         </View>
