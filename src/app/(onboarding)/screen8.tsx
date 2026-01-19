@@ -23,7 +23,7 @@ export default function TheBelief() {
         struggle, 
         tone, 
         mood, 
-        manifestation: selectedLabel // Saving the answer here
+        manifestation: selectedLabel
       }
     });
   };

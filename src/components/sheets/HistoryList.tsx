@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Share, ActivityIndicator } from 'react-native';
-// Use FlatList from Gesture Handler for best scrolling in Sheet
-import { FlatList } from 'react-native-gesture-handler'; 
+import { BottomSheetFlatList } from '@gorhom/bottom-sheet'; // <--- KEY IMPORT
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
@@ -147,12 +146,12 @@ export const HistoryList = ({ userId }: HistoryListProps) => {
   };
 
   return (
-    <FlatList
+    <BottomSheetFlatList
       data={loading ? Array(6).fill({}) : history}
+      // Fixed type error by explicitly typing index
       keyExtractor={(_: any, index: number) => index.toString()}
       style={{ flex: 1 }}
-      // Padding bottom 120 is plenty now because we fixed the ProfileSheet layout
-      contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+      contentContainerStyle={{ padding: 24, paddingBottom: 150 }}
       showsVerticalScrollIndicator={false}
       onEndReached={handleLoadMore}
       onEndReachedThreshold={0.5}

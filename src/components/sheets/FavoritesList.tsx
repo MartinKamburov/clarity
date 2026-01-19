@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Share, ActivityIndicator } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { BottomSheetFlatList } from '@gorhom/bottom-sheet'; // <--- Ensure this is imported
 
 // Hooks & Services
 import { fetchFavoriteQuotes } from '../../hooks/fetchFavoriteQuotes';
@@ -61,12 +62,14 @@ export const FavoritesList = ({ userId }: FavoritesListProps) => {
   }
 
   return (
-    <FlatList
+    <BottomSheetFlatList
       data={quotes}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+      // FIXED: Added type ': any' to item
+      keyExtractor={(item: any) => item.id}
+      contentContainerStyle={{ padding: 24, paddingBottom: 150 }}
       showsVerticalScrollIndicator={false}
-      renderItem={({ item }) => (
+      // FIXED: Added type ': { item: any }' to the render props
+      renderItem={({ item }: { item: any }) => (
         <View style={styles.favCard}>
           <View style={{ flex: 1 }}>
             <Text style={styles.favText}>"{item.content}"</Text>
@@ -135,8 +138,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontStyle: 'normal',
   },
-  
-  // NEW STYLES
   actionRow: {
       flexDirection: 'row',
       gap: 8,

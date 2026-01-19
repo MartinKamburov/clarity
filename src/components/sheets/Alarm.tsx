@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, Switch, Platform, Alert, ScrollView, Linking 
+  View, Text, StyleSheet, TouchableOpacity, Switch, Platform, Alert, Linking 
 } from 'react-native';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet'; // <--- KEY IMPORT
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
@@ -53,13 +54,12 @@ Notifications.setNotificationHandler({
 
 // Configure the "ALARM" category to show buttons on the notification itself
 Notifications.setNotificationCategoryAsync('ALARM', [
-  // CHANGE THIS TO TRUE 👇
   { identifier: 'SNOOZE', buttonTitle: 'Snooze', options: { opensAppToForeground: true } },
   { identifier: 'OPEN', buttonTitle: 'Start Affirmations', options: { opensAppToForeground: true } },
 ]);
 
 // ------------------------------------------------------------------
-// PROPS: Add `onAlarmTrigger` so we can tell the Parent App to show the Overlay
+// PROPS
 // ------------------------------------------------------------------
 interface AlarmProps {
   userId?: string;
@@ -101,9 +101,7 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
   const checkPermissionsOnMount = async () => {
     if (!Device.isDevice) return;
     const { status } = await Notifications.getPermissionsAsync();
-    if (status !== 'granted') {
-      // Optional: Logic to prompt user if needed, or stay silent until they toggle switch
-    }
+    // Optional: Logic to prompt user if needed, or stay silent until they toggle switch
   };
 
   const handlePermissionRequest = async () => {
@@ -243,7 +241,7 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
     return false;
   }
 
-  // --- RENDER (Same UI as before) ---
+  // --- RENDER SOUND LIST ---
   if (view === 'SOUNDS') {
     return (
       <Animated.View entering={SlideInRight} exiting={SlideOutRight} style={{ flex: 1 }}>
@@ -253,7 +251,8 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 24, gap: 12 }}>
+        {/* CHANGED: ScrollView -> BottomSheetScrollView */}
+        <BottomSheetScrollView contentContainerStyle={{ padding: 24, gap: 12 }}>
           {SOUNDS.map((sound) => (
             <TouchableOpacity 
               key={sound.id} 
@@ -267,14 +266,17 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
               {selectedSound.id === sound.id && <Feather name="check" size={20} color="#38BDF8" />}
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </BottomSheetScrollView>
       </Animated.View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    // CHANGED: ScrollView -> BottomSheetScrollView
+    <BottomSheetScrollView contentContainerStyle={styles.container}>
       <Text style={styles.description}>Set a daily reminder to center yourself and practice your affirmations.</Text>
+      
+      {/* CARD 1: TOGGLE */}
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={{ gap: 4 }}>
@@ -284,7 +286,11 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
           <Switch trackColor={{ false: '#334155', true: '#38BDF8' }} thumbColor={'#F8FAFC'} ios_backgroundColor="#334155" onValueChange={toggleSwitch} value={isEnabled} />
         </View>
       </View>
+
+      {/* CARD 2: SETTINGS */}
       <View style={[styles.card, { opacity: isEnabled ? 1 : 0.5 }]}>
+        
+        {/* Time Picker */}
         <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', paddingBottom: 16 }]}>
           <Text style={styles.label}>Time</Text>
           {Platform.OS === 'ios' ? (
@@ -296,6 +302,8 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
           )}
         </View>
         {showPicker && Platform.OS === 'android' && <DateTimePicker value={date} mode="time" display="default" onChange={onTimeChange} />}
+        
+        {/* Repeat Days */}
         <View style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
           <Text style={[styles.label, { marginBottom: 12 }]}>Repeat</Text>
           <View style={styles.daysContainer}>
@@ -309,6 +317,8 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
             })}
           </View>
         </View>
+
+        {/* Sound Selector */}
         <TouchableOpacity style={[styles.row, { paddingTop: 16 }]} onPress={() => isEnabled && setView('SOUNDS')} disabled={!isEnabled}>
           <Text style={styles.label}>Sound</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -317,7 +327,7 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
           </View>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </BottomSheetScrollView>
   );
 };
 

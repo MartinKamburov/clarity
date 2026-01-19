@@ -120,18 +120,22 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
       ref={ref}
       index={-1}
       snapPoints={snapPoints}
-      enablePanDownToClose={selectedPage === null} // Disable closing via swipe if in subpage (optional)
+      enablePanDownToClose={selectedPage === null} 
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: '#0F172A' }} 
       handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.2)', width: 40 }}
     >
-      <StreakShareCard ref={shareCardRef} streak={streak} />
+      {/* MOVED StreakShareCard INSIDE the scroll view. 
+         This allows the entire content to scroll together and fixes the layout locking issue.
+      */}
 
       <View style={{ flex: 1, overflow: 'hidden' }}>
         
         {/* === LAYER 1: MAIN CONTENT === */}
-        {/* We animate this view away so it doesn't conflict with Layer 2 */}
-        <Animated.View style={[{ flex: 1 }, mainMenuAnimStyle]}>
+        <Animated.View 
+          pointerEvents={selectedPage ? 'none' : 'auto'}
+          style={[{ flex: 1 }, mainMenuAnimStyle]}
+        >
           <View style={styles.header}>
             <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
               <Feather name="x" size={22} color="#E2E8F0" />
@@ -144,8 +148,6 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
 
           <BottomSheetScrollView 
             style={{ flex: 1 }} 
-            // Important: Disable scrolling on this layer when hidden
-            scrollEnabled={selectedPage === null}
             contentContainerStyle={styles.scrollContent} 
             showsVerticalScrollIndicator={false}
           >
@@ -158,8 +160,15 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
               <MaterialCommunityIcons name="diamond-stone" size={48} color="#1A2F5A" style={{ opacity: 0.8 }} />
             </TouchableOpacity>
 
-            {/* STREAK CARD */}
+            {/* STREAK CARD (Now part of the scrollable area) */}
             <View style={styles.streakCard}>
+               <StreakShareCard ref={shareCardRef} streak={streak} />
+               {/* NOTE: If StreakShareCard renders its own container, you can remove the wrapper View styles above 
+                  or integrate the UI code below directly. 
+                  Based on your previous code, StreakShareCard was just the ref component, 
+                  but the UI was actually hardcoded in ProfileSheet. 
+                  I have restored your hardcoded UI here inside the scroll view:
+               */}
                <View style={styles.streakLeftContainer}>
                   <View style={styles.bigRing}>
                       <Text style={styles.bigStreakNumber}>{streak}</Text>
@@ -227,7 +236,6 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
         </Animated.View>
 
         {/* === LAYER 2: DETAIL SUB-PAGE === */}
-        {/* We use pointerEvents to ensure clicks pass through to Layer 1 when closed */}
         <Animated.View 
             pointerEvents={selectedPage ? 'auto' : 'none'}
             style={[styles.subPageContainer, subPageStyle]}
@@ -241,7 +249,6 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
           </View>
 
           <View style={{ flex: 1 }}>
-             {/* Only render content if we have a page selected to save resources */}
              {selectedPage && renderSubPageContent()}
           </View>
         </Animated.View>
@@ -251,7 +258,7 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
   );
 });
 
-// ... styles remain unchanged ...
+// ... Helper Components ...
 const GridItem = ({ label, icon, onPress }: { label: string, icon: any, onPress: () => void }) => (
     <TouchableOpacity style={styles.gridCard} onPress={onPress} activeOpacity={0.8}>
         <View style={styles.gridIconContainer}>
@@ -296,7 +303,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 500, // Reduced padding here, BottomSheet handles the rest
+    // CRITICAL: Enough padding to reach the bottom, but not huge (150 is ideal)
+    paddingBottom: 50, 
     flexGrow: 1, 
   },
   banner: {

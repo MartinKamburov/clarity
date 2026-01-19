@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Platform, Alert, Modal, Linking 
+  View, Text, StyleSheet, TouchableOpacity, Switch, Platform, Alert, Modal, Linking 
 } from 'react-native';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet'; // <--- KEY IMPORT
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
@@ -114,10 +115,12 @@ export const Reminders = ({ userId }: { userId?: string }) => {
   const scheduleAll = async (newState: RemindersState) => {
     await Notifications.cancelAllScheduledNotificationsAsync();
 
+    // 1. General Reminders
     if (newState.general.enabled) {
       await scheduleGeneralReminders(newState.general);
     }
 
+    // 2. Daily Practice
     if (newState.daily.enabled) {
       await scheduleSingleRecurring(
         "Daily Practice", 
@@ -126,6 +129,7 @@ export const Reminders = ({ userId }: { userId?: string }) => {
       );
     }
 
+    // 3. Streak
     if (newState.streak.enabled) {
       await scheduleSingleRecurring(
         "Keep your streak alive!", 
@@ -172,7 +176,7 @@ export const Reminders = ({ userId }: { userId?: string }) => {
       }
     }
 
-    // 2. SHUFFLE THE QUOTES (The Fix for Repeats)
+    // 2. SHUFFLE THE QUOTES
     const shuffledQuotes = shuffleArray(quotes);
 
     // 3. Calculate Times
@@ -186,7 +190,7 @@ export const Reminders = ({ userId }: { userId?: string }) => {
     const durationMinutes = endTotalMinutes - startTotalMinutes;
     const intervalMinutes = durationMinutes / config.frequency;
 
-    // console.log(`LOG Scheduling ${config.frequency} notifications between minutes ${startTotalMinutes} and ${endTotalMinutes}`);
+    console.log(`LOG Scheduling ${config.frequency} notifications between minutes ${startTotalMinutes} and ${endTotalMinutes}`);
 
     for (let i = 0; i < config.frequency; i++) {
       // Calculate Time with Jitter
@@ -200,13 +204,8 @@ export const Reminders = ({ userId }: { userId?: string }) => {
       const h = Math.floor(scheduledMinute / 60);
       const m = scheduledMinute % 60;
 
-      // 4. PICK UNIQUE QUOTE using Modulo on the SHUFFLED list
+      // 4. PICK UNIQUE QUOTE
       const selectedQuote = shuffledQuotes[i % shuffledQuotes.length];
-
-      // --- CONSOLE LOG FOR VERIFICATION ---
-      // This will show up in your terminal
-    //   const timeString = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    //   console.log(`LOG Scheduled notification at ${timeString} - "${selectedQuote}"`);
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -221,6 +220,8 @@ export const Reminders = ({ userId }: { userId?: string }) => {
           repeats: true,
         },
       });
+      
+      console.log(`LOG Scheduled notification at ${h}:${m} - "${selectedQuote}"`);
     }
   };
 
@@ -251,6 +252,7 @@ export const Reminders = ({ userId }: { userId?: string }) => {
   const toggleSection = async (key: keyof RemindersState) => {
     Haptics.selectionAsync();
     
+    // If turning ON, check permissions first
     if (!state[key].enabled) {
         const hasPerm = await checkPermissions();
         if (!hasPerm) return;
@@ -266,7 +268,11 @@ export const Reminders = ({ userId }: { userId?: string }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    // CHANGED: Using BottomSheetScrollView instead of ScrollView
+    <BottomSheetScrollView 
+      contentContainerStyle={styles.container} 
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={styles.headerTitle}>Set up your daily reminders to make your affirmations fit your routine</Text>
 
       {/* --- 1. GENERAL REMINDERS --- */}
@@ -457,9 +463,9 @@ export const Reminders = ({ userId }: { userId?: string }) => {
         />
       )}
       
-       {/* Other Android pickers can go here */}
+       {/* Repeat similar blocks for other Android pickers if needed */}
 
-    </ScrollView>
+    </BottomSheetScrollView>
   );
 };
 
@@ -495,6 +501,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   premiumButtonText: { color: '#0F172A', fontWeight: '600', fontSize: 16 },
+  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#1E293B', width: '100%', maxWidth: 320, borderRadius: 24, padding: 24 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#FFF', marginBottom: 20, textAlign: 'center' },

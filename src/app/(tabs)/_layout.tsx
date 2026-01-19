@@ -18,11 +18,6 @@ export default function HomePageLayout() {
                but it helps prevent "Route not found" errors.
             */}
             <Tabs.Screen name="home" />
-            <Tabs.Screen name="categories" />
-            {/* <Tabs.Screen name="categories" />
-            <Tabs.Screen name="subscription" />
-            <Tabs.Screen name="theme" />
-            <Tabs.Screen name="user_settings" /> */}
         </Tabs>
     );
 }
