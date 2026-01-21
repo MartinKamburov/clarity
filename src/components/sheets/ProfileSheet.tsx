@@ -74,7 +74,6 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
     });
   };
 
-  // Slide Layer 2 (SubPage) IN from the right
   const subPageStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -83,13 +82,12 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
     };
   });
 
-  // Slide Layer 1 (Main Menu) OUT to the left
   const mainMenuAnimStyle = useAnimatedStyle(() => {
     return {
         transform: [
-            { translateX: -slideAnim.value * (width * 0.3) }, // Parallax effect
+            { translateX: -slideAnim.value * (width * 0.3) }, 
         ],
-        opacity: 1 - slideAnim.value, // Fade out main menu
+        opacity: 1 - slideAnim.value, 
     };
   });
 
@@ -100,12 +98,20 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
     []
   );
 
-  // --- RENDER SUB-PAGES ---
   const renderSubPageContent = () => {
     if (selectedPage === 'Favorites') return <FavoritesList userId={props.userId} />;
     if (selectedPage === 'History') return <HistoryList userId={props.userId} />;
     if (selectedPage === 'Alarm') return <Alarm />;
     if (selectedPage === 'Reminders') return <Reminders userId={props.userId} />;
+    
+    if (selectedPage === 'My affirmations') {
+        return (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                <MaterialCommunityIcons name="fountain-pen-tip" size={48} color="rgba(255,255,255,0.2)" />
+                <Text style={styles.subPagePlaceholderText}>Your custom affirmations will appear here.</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.centerContainer}>
@@ -120,15 +126,12 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
       ref={ref}
       index={-1}
       snapPoints={snapPoints}
+      activeOffsetY={[-1, 1]}
       enablePanDownToClose={selectedPage === null} 
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: '#0F172A' }} 
       handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.2)', width: 40 }}
     >
-      {/* MOVED StreakShareCard INSIDE the scroll view. 
-         This allows the entire content to scroll together and fixes the layout locking issue.
-      */}
-
       <View style={{ flex: 1, overflow: 'hidden' }}>
         
         {/* === LAYER 1: MAIN CONTENT === */}
@@ -148,7 +151,11 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
 
           <BottomSheetScrollView 
             style={{ flex: 1 }} 
-            contentContainerStyle={styles.scrollContent} 
+            contentContainerStyle={{ 
+                padding: 24, 
+                paddingBottom: insets.bottom + 150, 
+                flexGrow: 1 
+            }} 
             showsVerticalScrollIndicator={false}
           >
             {/* UNLOCK BANNER */}
@@ -160,15 +167,9 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
               <MaterialCommunityIcons name="diamond-stone" size={48} color="#1A2F5A" style={{ opacity: 0.8 }} />
             </TouchableOpacity>
 
-            {/* STREAK CARD (Now part of the scrollable area) */}
+            {/* STREAK CARD */}
             <View style={styles.streakCard}>
                <StreakShareCard ref={shareCardRef} streak={streak} />
-               {/* NOTE: If StreakShareCard renders its own container, you can remove the wrapper View styles above 
-                  or integrate the UI code below directly. 
-                  Based on your previous code, StreakShareCard was just the ref component, 
-                  but the UI was actually hardcoded in ProfileSheet. 
-                  I have restored your hardcoded UI here inside the scroll view:
-               */}
                <View style={styles.streakLeftContainer}>
                   <View style={styles.bigRing}>
                       <Text style={styles.bigStreakNumber}>{streak}</Text>
@@ -258,7 +259,6 @@ export const ProfileSheet = forwardRef<BottomSheet, ProfileSheetProps>((props, r
   );
 });
 
-// ... Helper Components ...
 const GridItem = ({ label, icon, onPress }: { label: string, icon: any, onPress: () => void }) => (
     <TouchableOpacity style={styles.gridCard} onPress={onPress} activeOpacity={0.8}>
         <View style={styles.gridIconContainer}>
@@ -300,12 +300,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 24,
-    // CRITICAL: Enough padding to reach the bottom, but not huge (150 is ideal)
-    paddingBottom: 50, 
-    flexGrow: 1, 
   },
   banner: {
     backgroundColor: '#DCE6F5', 

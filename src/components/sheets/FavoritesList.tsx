@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Share, ActivityIndicator } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { BottomSheetFlatList } from '@gorhom/bottom-sheet'; // <--- Ensure this is imported
+import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // 1. Import Insets
 
 // Hooks & Services
 import { fetchFavoriteQuotes } from '../../hooks/fetchFavoriteQuotes';
@@ -13,31 +14,22 @@ interface FavoritesListProps {
 }
 
 export const FavoritesList = ({ userId }: FavoritesListProps) => {
-  // We use a local refresh signal to reload the list after deletion
   const [refreshSignal, setRefreshSignal] = useState(0);
+  const insets = useSafeAreaInsets(); // 2. Initialize Insets
   
-  // Use the hook
   const { quotes, loading } = fetchFavoriteQuotes(userId, refreshSignal);
 
-  // --- HANDLERS ---
   const handleRemove = async (quote: any) => {
     if (!userId) return;
-    
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
-    // 1. Remove from DB
     await removeFavoriteQuote(quote, userId);
-    
-    // 2. Trigger re-fetch
     setRefreshSignal(prev => prev + 1);
   };
 
   const handleShare = async (text: string) => {
     Haptics.selectionAsync();
     try {
-        await Share.share({
-            message: `"${text}"`, // Simple text share
-        });
+        await Share.share({ message: `"${text}"` });
     } catch (error) {
         console.error("Error sharing quote:", error);
     }
@@ -64,35 +56,26 @@ export const FavoritesList = ({ userId }: FavoritesListProps) => {
   return (
     <BottomSheetFlatList
       data={quotes}
-      // FIXED: Added type ': any' to item
       keyExtractor={(item: any) => item.id}
-      contentContainerStyle={{ padding: 24, paddingBottom: 150 }}
+      style={{ flex: 1 }} // 3. Force full height
+      contentContainerStyle={{ 
+        padding: 24, 
+        flexGrow: 1, // 4. Ensure container fills space
+        paddingBottom: insets.bottom + 100 // 5. Dynamic bottom padding
+      }}
       showsVerticalScrollIndicator={false}
-      // FIXED: Added type ': { item: any }' to the render props
       renderItem={({ item }: { item: any }) => (
         <View style={styles.favCard}>
           <View style={{ flex: 1 }}>
             <Text style={styles.favText}>"{item.content}"</Text>
           </View>
           
-          {/* Action Buttons Row */}
           <View style={styles.actionRow}>
-              
-              {/* SHARE BUTTON */}
-              <TouchableOpacity 
-                onPress={() => handleShare(item.content)} 
-                style={styles.iconButton}
-                hitSlop={10}
-              >
+              <TouchableOpacity onPress={() => handleShare(item.content)} style={styles.iconButton} hitSlop={10}>
                 <Feather name="share" size={18} color="#94A3B8" />
               </TouchableOpacity>
 
-              {/* DELETE BUTTON */}
-              <TouchableOpacity 
-                onPress={() => handleRemove(item)} 
-                style={styles.iconButton}
-                hitSlop={10}
-              >
+              <TouchableOpacity onPress={() => handleRemove(item)} style={styles.iconButton} hitSlop={10}>
                 <Feather name="trash-2" size={18} color="#EF4444" />
               </TouchableOpacity>
           </View>
@@ -103,50 +86,14 @@ export const FavoritesList = ({ userId }: FavoritesListProps) => {
 };
 
 const styles = StyleSheet.create({
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 24,
-  },
-  emptyText: {
-    color: '#E2E8F0',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  emptySubText: {
-    color: '#94A3B8',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 4,
-  },
+  centerContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
+  emptyText: { color: '#E2E8F0', fontSize: 18, fontWeight: '600' },
+  emptySubText: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginTop: 4 },
   favCard: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.08)', padding: 16, borderRadius: 16, marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
   },
-  favText: {
-    color: '#F1F5F9',
-    fontSize: 16,
-    lineHeight: 24,
-    fontStyle: 'normal',
-  },
-  actionRow: {
-      flexDirection: 'row',
-      gap: 8,
-  },
-  iconButton: {
-    padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  }
+  favText: { color: '#F1F5F9', fontSize: 16, lineHeight: 24 },
+  actionRow: { flexDirection: 'row', gap: 8 },
+  iconButton: { padding: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }
 });

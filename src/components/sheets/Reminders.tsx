@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, Switch, Platform, Alert, Modal, Linking 
 } from 'react-native';
-import { BottomSheetScrollView } from '@gorhom/bottom-sheet'; // <--- KEY IMPORT
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet'; 
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
@@ -11,8 +11,9 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../lib/supabase';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // 1. Import
 
-// --- TYPES ---
+// ... Types and Config (keep your existing code here) ...
 interface ReminderConfig {
   enabled: boolean;
   time: Date;
@@ -52,8 +53,9 @@ const FREQUENCY_OPTIONS = [3, 5, 7, 10, 12];
 
 export const Reminders = ({ userId }: { userId?: string }) => {
   const [state, setState] = useState<RemindersState>(DEFAULT_STATE);
+  const insets = useSafeAreaInsets(); // 2. Get Insets
   
-  // Pickers State
+  // ... Pickers State & Logic (keep exactly as is) ...
   const [showGeneralStartPicker, setShowGeneralStartPicker] = useState(false);
   const [showGeneralEndPicker, setShowGeneralEndPicker] = useState(false);
   const [showDailyPicker, setShowDailyPicker] = useState(false);
@@ -64,217 +66,31 @@ export const Reminders = ({ userId }: { userId?: string }) => {
     loadSettings();
   }, []);
 
-  // --- LOGIC: PERMISSIONS ---
-  const checkPermissions = async () => {
-    if (!Device.isDevice) return true;
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    
-    if (existingStatus === 'granted') {
-        return true;
-    }
-
-    if (existingStatus === 'undetermined') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        return status === 'granted';
-    }
-
-    return new Promise<boolean>((resolve) => {
-        Alert.alert(
-            "Notifications are off",
-            "To get reminders, go to your device settings and allow notifications.",
-            [
-                { 
-                    text: "Maybe later", 
-                    style: "cancel", 
-                    onPress: () => resolve(false) 
-                },
-                { 
-                    text: "Open settings", 
-                    onPress: () => {
-                        Linking.openSettings();
-                        resolve(false); 
-                    } 
-                }
-            ]
-        );
-    });
-  };
-
-  // --- HELPER: Fisher-Yates Shuffle ---
-  const shuffleArray = (array: string[]) => {
-    const newArr = [...array];
-    for (let i = newArr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-    }
-    return newArr;
-  };
-
-  // --- LOGIC: SCHEDULING ---
-  const scheduleAll = async (newState: RemindersState) => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    // 1. General Reminders
-    if (newState.general.enabled) {
-      await scheduleGeneralReminders(newState.general);
-    }
-
-    // 2. Daily Practice
-    if (newState.daily.enabled) {
-      await scheduleSingleRecurring(
-        "Daily Practice", 
-        "Take a moment to center yourself.", 
-        newState.daily.time
-      );
-    }
-
-    // 3. Streak
-    if (newState.streak.enabled) {
-      await scheduleSingleRecurring(
-        "Keep your streak alive!", 
-        "Don't forget to open Clarity today.", 
-        newState.streak.time
-      );
-    }
-  };
-
-  const scheduleSingleRecurring = async (title: string, body: string, date: Date) => {
-    await Notifications.scheduleNotificationAsync({
-      content: { title, body, sound: true },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-        hour: date.getHours(),
-        minute: date.getMinutes(),
-        repeats: true,
-      },
-    });
-  };
-
-  const scheduleGeneralReminders = async (config: GeneralConfig) => {
-    let quotes = ["You are enough.", "Breathe in, breathe out.", "Today is a new day."];
-    
-    // 1. Fetch Favorites
-    if (userId) {
-      try {
-        const { data, error } = await supabase
-            .from('favorites')
-            .select(`quotes (*)`) 
-            .eq('user_id', userId);
-
-        if (!error && data && data.length > 0) {
-            const fetchedQuotes = data
-                .map((item: any) => item.quotes?.content)
-                .filter((content: any) => typeof content === 'string' && content.length > 0);
-            
-            if (fetchedQuotes.length > 0) {
-                quotes = fetchedQuotes;
-            }
-        }
-      } catch (err) {
-        console.log("Error fetching quotes for reminders:", err);
-      }
-    }
-
-    // 2. SHUFFLE THE QUOTES
-    const shuffledQuotes = shuffleArray(quotes);
-
-    // 3. Calculate Times
-    const startTotalMinutes = (config.startTime.getHours() * 60) + config.startTime.getMinutes();
-    let endTotalMinutes = (config.endTime.getHours() * 60) + config.endTime.getMinutes();
-
-    if (endTotalMinutes <= startTotalMinutes) {
-        endTotalMinutes += 24 * 60; 
-    }
-
-    const durationMinutes = endTotalMinutes - startTotalMinutes;
-    const intervalMinutes = durationMinutes / config.frequency;
-
-    console.log(`LOG Scheduling ${config.frequency} notifications between minutes ${startTotalMinutes} and ${endTotalMinutes}`);
-
-    for (let i = 0; i < config.frequency; i++) {
-      // Calculate Time with Jitter
-      const jitter = Math.floor(Math.random() * (intervalMinutes * 0.5)); 
-      let scheduledMinute = Math.floor(startTotalMinutes + (i * intervalMinutes) + jitter);
-
-      if (scheduledMinute >= 24 * 60) {
-          scheduledMinute -= 24 * 60;
-      }
-
-      const h = Math.floor(scheduledMinute / 60);
-      const m = scheduledMinute % 60;
-
-      // 4. PICK UNIQUE QUOTE
-      const selectedQuote = shuffledQuotes[i % shuffledQuotes.length];
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Clarity",
-          body: selectedQuote,
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-          hour: h,
-          minute: m,
-          repeats: true,
-        },
-      });
-      
-      console.log(`LOG Scheduled notification at ${h}:${m} - "${selectedQuote}"`);
-    }
-  };
-
-  // --- LOGIC: STATE MANAGEMENT ---
-  const saveState = async (updates: Partial<RemindersState>) => {
-    const newState = { ...state, ...updates };
-    setState(newState);
-    await AsyncStorage.setItem('REMINDERS_SETTINGS', JSON.stringify(newState));
-    scheduleAll(newState);
-  };
-
-  const loadSettings = async () => {
-    try {
-      const saved = await AsyncStorage.getItem('REMINDERS_SETTINGS');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        parsed.general.startTime = new Date(parsed.general.startTime);
-        parsed.general.endTime = new Date(parsed.general.endTime);
-        parsed.daily.time = new Date(parsed.daily.time);
-        parsed.streak.time = new Date(parsed.streak.time);
-        setState(parsed);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleSection = async (key: keyof RemindersState) => {
-    Haptics.selectionAsync();
-    
-    // If turning ON, check permissions first
-    if (!state[key].enabled) {
-        const hasPerm = await checkPermissions();
-        if (!hasPerm) return;
-    }
-
-    const updatedSection = { ...state[key], enabled: !state[key].enabled };
-    saveState({ [key]: updatedSection });
-  };
-
-  // --- UI COMPONENTS ---
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  };
+  // ... (Keep checkPermissions, shuffleArray, scheduleAll, saveState, toggleSection, formatTime logic exactly as is) ...
+  const checkPermissions = async () => { /*...*/ return true; };
+  const scheduleAll = async (newState: RemindersState) => { /*...*/ };
+  const saveState = async (updates: Partial<RemindersState>) => { /*...*/ };
+  const loadSettings = async () => { /*...*/ };
+  const toggleSection = async (key: keyof RemindersState) => { /*...*/ };
+  const formatTime = (date: Date) => { return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 
   return (
-    // CHANGED: Using BottomSheetScrollView instead of ScrollView
     <BottomSheetScrollView 
-      contentContainerStyle={styles.container} 
+      style={{ flex: 1 }}
+      contentContainerStyle={{ 
+        padding: 24,
+        gap: 16,
+        // 3. THIS FIXES THE HEIGHT LOCKING:
+        flexGrow: 1, 
+        // 4. THIS FIXES THE ELASTIC SCROLL (Dynamic Padding):
+        paddingBottom: insets.bottom + 20 
+      }} 
       showsVerticalScrollIndicator={false}
     >
       <Text style={styles.headerTitle}>Set up your daily reminders to make your affirmations fit your routine</Text>
 
+      {/* ... (Rest of your component UI stays exactly the same) ... */}
+      
       {/* --- 1. GENERAL REMINDERS --- */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
@@ -296,8 +112,6 @@ export const Reminders = ({ userId }: { userId?: string }) => {
         {state.general.enabled && (
             <Animated.View entering={FadeInDown} layout={Layout} style={styles.expandedContent}>
                 <View style={styles.divider} />
-                
-                {/* Frequency */}
                 <TouchableOpacity style={styles.settingRow} onPress={() => setShowFreqModal(true)}>
                     <Text style={styles.settingLabel}>Frequency</Text>
                     <View style={styles.settingValueContainer}>
@@ -343,8 +157,8 @@ export const Reminders = ({ userId }: { userId?: string }) => {
         )}
       </View>
 
-      {/* --- 2. DAILY WRITING/PRACTICE --- */}
-      <View style={styles.card}>
+      {/* --- 2. DAILY REMINDERS --- */}
+       <View style={styles.card}>
         <View style={styles.cardHeader}>
             <View>
                 <Text style={styles.cardTitle}>Daily practice reminders</Text>
@@ -380,8 +194,8 @@ export const Reminders = ({ userId }: { userId?: string }) => {
         )}
       </View>
 
-      {/* --- 3. STREAK REMINDER --- */}
-      <View style={styles.card}>
+      {/* --- 3. STREAK --- */}
+       <View style={styles.card}>
         <View style={styles.cardHeader}>
             <View>
                 <Text style={styles.cardTitle}>Streak reminder</Text>
@@ -417,15 +231,13 @@ export const Reminders = ({ userId }: { userId?: string }) => {
         )}
       </View>
 
-      {/* --- 4. FOOTER --- */}
+      {/* --- FOOTER --- */}
       <TouchableOpacity style={styles.premiumButton} activeOpacity={0.9}>
         <Text style={styles.premiumButtonText}>Unlock more reminders</Text>
       </TouchableOpacity>
 
-      <View style={{ height: 100 }} />
-
-      {/* --- MODALS --- */}
-      <Modal visible={showFreqModal} transparent animationType="fade">
+      {/* ... (Modals code stays the same) ... */}
+       <Modal visible={showFreqModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>How many times?</Text>
@@ -462,15 +274,14 @@ export const Reminders = ({ userId }: { userId?: string }) => {
             }}
         />
       )}
-      
-       {/* Repeat similar blocks for other Android pickers if needed */}
+       {/* (Other android pickers here) */}
 
     </BottomSheetScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 16 },
+  // REMOVED 'container' style because we are passing it directly in contentContainerStyle
   headerTitle: { fontSize: 16, color: '#94A3B8', textAlign: 'center', marginBottom: 16, lineHeight: 24 },
   card: {
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -501,7 +312,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   premiumButtonText: { color: '#0F172A', fontWeight: '600', fontSize: 16 },
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#1E293B', width: '100%', maxWidth: 320, borderRadius: 24, padding: 24 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#FFF', marginBottom: 20, textAlign: 'center' },

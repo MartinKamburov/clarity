@@ -10,6 +10,7 @@ import * as Device from 'expo-device';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { SlideInRight, SlideOutRight } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <--- 1. IMPORT INSETS
 import { supabase } from '../../lib/supabase'; 
 
 // --- TYPES ---
@@ -67,6 +68,7 @@ interface AlarmProps {
 }
 
 export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
+  const insets = useSafeAreaInsets(); // <--- 2. GET INSETS
   const [isEnabled, setIsEnabled] = useState(false);
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
@@ -101,7 +103,6 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
   const checkPermissionsOnMount = async () => {
     if (!Device.isDevice) return;
     const { status } = await Notifications.getPermissionsAsync();
-    // Optional: Logic to prompt user if needed, or stay silent until they toggle switch
   };
 
   const handlePermissionRequest = async () => {
@@ -205,8 +206,8 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
           title: "Clarity",
           body: "Time for your daily affirmations.",
           sound: true, 
-          categoryIdentifier: 'ALARM', // <--- This links to the buttons
-          data: { mode: 'ALARM' },     // <--- Payload to check on open
+          categoryIdentifier: 'ALARM', 
+          data: { mode: 'ALARM' },     
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -251,8 +252,17 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
         </View>
-        {/* CHANGED: ScrollView -> BottomSheetScrollView */}
-        <BottomSheetScrollView contentContainerStyle={{ padding: 24, gap: 12 }}>
+        
+        {/* FIXED: Added style, flexGrow and Padding */}
+        <BottomSheetScrollView 
+            style={{ flex: 1 }}
+            contentContainerStyle={{ 
+                padding: 24, 
+                gap: 12,
+                flexGrow: 1, 
+                paddingBottom: insets.bottom + 40 
+            }}
+        >
           {SOUNDS.map((sound) => (
             <TouchableOpacity 
               key={sound.id} 
@@ -272,8 +282,16 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
   }
 
   return (
-    // CHANGED: ScrollView -> BottomSheetScrollView
-    <BottomSheetScrollView contentContainerStyle={styles.container}>
+    // FIXED: Added style, flexGrow and Padding
+    <BottomSheetScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={{ 
+            padding: 24, 
+            gap: 24,
+            flexGrow: 1, 
+            paddingBottom: insets.bottom + 80 
+        }}
+    >
       <Text style={styles.description}>Set a daily reminder to center yourself and practice your affirmations.</Text>
       
       {/* CARD 1: TOGGLE */}
@@ -332,7 +350,7 @@ export const Alarm = ({ userId, onAlarmTrigger }: AlarmProps) => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 24 },
+  // REMOVED 'container' style because we are passing it directly in contentContainerStyle
   description: { color: '#94A3B8', fontSize: 15, textAlign: 'center', marginBottom: 8, lineHeight: 22 },
   card: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
